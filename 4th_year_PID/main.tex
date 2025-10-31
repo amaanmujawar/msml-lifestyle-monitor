@@ -1,0 +1,561 @@
+\documentclass[conference, onecolumn,12pt]{IEEEtran}
+\usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=1.5cm, right=1.5cm]{geometry} 
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{cite}
+\usepackage{hyperref}
+\usepackage{amssymb}
+\usepackage{pdflscape}
+\usepackage{everypage}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{setspace}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{float}
+
+\geometry{a4paper}
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks = true,
+    linkcolor = blue,
+    filecolor = magenta,      
+    urlcolor = blue,
+    citecolor = blue
+}
+
+\pagestyle{fancy}
+\fancyhf{} 
+\fancyhead[L]{ELE407 Project Initialisation Document} 
+\fancyfoot[C]{Page \thepage} 
+\renewcommand{\headrulewidth}{0.4pt} 
+\renewcommand{\footrulewidth}{0.4pt} 
+
+% Define colors for syntax highlighting
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+% Setup the listings package
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+% Apply the style
+\lstset{style=mystyle}
+
+\begin{document}
+
+\begin{figure}
+    \centering
+    \vspace{-20pt}
+    \includegraphics[width=1\linewidth]{Images/Project-Template.pdf}
+    \vspace{-30pt}
+\end{figure}
+
+\section{Introduction}
+\label{sec: Introduction}
+
+\subsection{Background}
+\label{sec: Introduction; Background}
+
+Chronic health conditions such as diabetes increasingly require continuous lifestyle monitoring to support effective management and early intervention. In recent years, the prevalence of type 2 diabetes has risen significantly, with evidence suggesting that the COVID-19 pandemic has accelerated this trend by disrupting healthcare access, increasing sedentary behaviour, and altering dietary habits \cite{Barron2023}. Despite these growing challenges, affordable and fully integrated health monitoring systems remain limited. Many existing tools are expensive, fragmented, or unable to combine information from multiple sensor types in a cohesive way, reducing their usefulness for long-term condition management.
+
+\noindent This project will employ machine learning (ML) to integrate and interpret data from multiple sensors for lifestyle assessment, with a particular focus on supporting individuals living with diabetes. The system will combine information from RGB cameras, inertial measurement units (IMUs), and healthcare sensors to recognise physical activity, analyse food intake, and monitor key health indicators. Deep learning has proven particularly effective in food image recognition, enabling accurate estimation of portion size and nutrient composition from complex visual data \cite{Zhou2019,Liu2025}. Detected foods will be cross-referenced with nutritional databases such as the USDA FoodData Central \cite{USDA2023} or Edamam Application Programming Interface (API) \cite{Edamam2024} to estimate calorific and macronutrient values, especially carbohydrate intake, which is crucial for managing blood glucose levels \cite{Shen2020}. Recent advances in Artificial Intelligence (AI)-driven food monitoring demonstrate the potential of multimodal and context-aware systems to promote healthier eating behaviours, and support diet-related disease management \cite{Chan2025}. The system will focus on continuous lifestyle tracking and trend analysis rather than real-time medical feedback, allowing users and healthcare professionals to review long-term data for more informed insights into behavioural and metabolic health \cite{Zhou2019,Anthimopoulos2014}.
+
+\noindent The aim is to deliver a modular and scalable prototype suitable for home and community healthcare environments \cite{Helal2009}. Its affordability and adaptability make it especially suited for resource-limited settings, where access to clinical monitoring may be restricted. By integrating activity, nutrition, and physiological data \cite{Whelan2019}, the system aims to help users better understand how their daily choices affect the impact on lifestyle choices and metabolic health. This approach supports early detection of unhealthy trends, such as inconsistent meal timing, low physical activity, or irregular glucose patterns, allowing for timely lifestyle adjustments before complications arise \cite{Rosa2022}.
+
+\noindent In the long term, the software platform could also facilitate data sharing with healthcare professionals, enabling more informed consultations and tailored treatment plans \cite{Patel2015}. The nature of the design allows additional sensors or data streams---such as electrocardiogram (ECG) and blood pressure sensors---to be incorporated as needed, extending the system’s usefulness beyond diabetes management to general metabolic health. Ultimately, this project seeks to bridge the gap between medical monitoring and everyday behaviour tracking, providing an accessible and scalable tool that empowers individuals to take greater control over their health while reducing the burden on healthcare systems.
+
+\medskip
+
+\subsection{Specification}
+\label{sec: Introduction; Specification}
+
+The primary objective of this project is to design and prototype an integrated, multimodal lifestyle monitoring system that combines nutritional, physiological, and behavioural data to support diabetes management and general metabolic health assessment. The following objectives define the project scope and deliverables:
+
+\begin{enumerate}
+    \item Develop a modular multi-sensor system that integrates visual, inertial, and physiological sensing subsystems for continuous lifestyle monitoring. \label{1.}
+    
+    \item Implement the NUT capable of recognising food items from images using convolutional neural networks (CNNs) and estimating calorific and macronutrient content through integration with nutritional databases such as USDA FoodData Central and Edamam. \label{2.}
+    
+    \item Design and prototype the Activity Sensor System (ASS) for continuous acquisition of physiological parameters (heart rate, SpO\textsubscript{2}, temperature, and motion) via a compact wearable device using low-power embedded hardware. \label{3.}
+    
+    \item Develop the Pre-Processor (PP) as the central coordination unit to synchronise data, manage timestamps, handle secure transmission, and perform lightweight edge-based data fusion. \label{4.}
+    
+    \item Establish a secure and efficient data pipeline employing Message Queuing Telemetry Transport (MQTT) over Transport Layer Security (TLS) for device–server communication, ensuring reliable and encrypted data exchange. \label{5.}
+    
+    \item Implement a local server platform---using a Raspberry Pi---to store, process, and visualise multimodal data, hosting Structured Query Language (SQL) databases, dashboards, and inference pipelines for on-device analytics. \label{6.}
+    
+    \item Design a user interface---web and or mobile---for real-time data visualisation, historical review, and interaction with the wearable and the NUT. \label{7.}
+    
+    \item Validate system performance through structured testing of model accuracy, sensor reliability, data integrity, and end-to-end communication latency. \label{8.}
+    
+    \item Ensure compliance with ethical, regulatory, and cybersecurity standards, aligning with MHRA guidance on Software and AI as a Medical Device (SaMD) for health-adjacent applications. \label{9.}
+\end{enumerate}
+
+\medskip
+
+\section{Theory and Technical Content}
+\label{sec: Theory and Technical Content}
+
+\subsection{Overall Project Architecture}
+\label{sec: Theory Introduction; Overview}
+
+The proposed lifestyle monitoring platform adopts a modular, multi-sensor architecture designed to capture, process, and correlate complementary health data streams. This structure reflects recent developments in multimodal health systems that combine computer vision, wearable sensing, and data fusion to achieve comprehensive lifestyle assessment \cite{Chen2023,Bahador2021}. The system consists of three interconnected subsystems: the NUT, ASS, and the PP. Together, these components form a unified framework that links dietary behaviour, physiological activity, and contextual data.
+
+\noindent The NUT functions as the visual data interface, generating structured nutritional information from user-captured images. Operating in coordination with the ASS, which continuously measures physiological and activity-related parameters such as heart rate, oxygen saturation, motion, and temperature, the system can associate nutritional data with real-time physiological responses. This integration enables the platform to capture the dynamic relationship between diet and physical activity, supporting long-term monitoring of lifestyle balance and overall health \cite{Han2023,Qi2025,Kim2024}.
+
+\noindent Acting as the central coordination layer, the PP facilitates communication and synchronisation between the NUT and ASS. It ensures data integrity, timestamp alignment, and secure transmission to backend servers for higher-level analysis. The PP also supports lightweight, context-aware computation for local data fusion and adaptive feedback generation, aligning with best practices in edge-based multimodal processing \cite{Singh2024,Wang2023}. 
+
+\noindent This modular configuration also ensures long-term scalability, enabling seamless integration of emerging biosensing technologies---such as glucose, ECG, and blood pressure sensors---without the need for architectural re-design \cite{Kim2024,Tonello2024}. Through the integration of nutritional, physiological, and contextual data streams, the platform evolves from a conventional tracking system into an adaptive health framework capable of identifying patterns and supporting personalised interventions. In doing so, it establishes a flexible foundation for data-driven health insights that extend beyond diabetes management to encompass preventive, metabolic, and general wellbeing applications \cite{Rodin2022,Sreeharsha2024,Serviente2025}.
+
+\medskip
+
+\subsection{Nutritional Unit Tracker}
+\label{sec: Theory Introduction; Nutritional Unit Tracker}
+
+The NUT forms the vision-based subsystem within the proposed lifestyle monitoring system, it's primary objective is to automate dietary assessment by identifying, classifying, and quantifying food items from user-captured images, in order to estimate nutritional intake parameters such as calorific value and macronutrient composition. In conjunction with the Activity Sensor System (ASS), the NUT enables the correlation of dietary input with physiological response, forming a key component for evaluating lifestyle balance \cite{Helal2009,Chen2023,Whelan2019}.
+
+\noindent From a theoretical standpoint, the NUT establishes the foundational framework for applying deep learning and computer vision techniques for food recognition. Early food classification systems relied on handcrafted feature extraction and support vector machines, which exhibited limited generalisation across diverse cuisines and presentation conditions \cite{Kagaya2014}. The emergence of CNNs revolutionised this field by enabling hierarchical feature learning directly from pixel data, allowing networks to automatically extract spatial and colour-based features relevant to food type and portion estimation \cite{Liu2025}. Modern architectures such as Inception-V3, ResNet-50, and YOLOv8 have demonstrated robust performance on benchmark datasets like Food-101, UEC-Food256, and Recipe1M+, achieving classification accuracies exceeding 85--90\% under varied illumination and viewing conditions \cite{Zhou2019,Kagaya2014,Chan2025}. These results establish CNNs as the state-of-the-art foundation for dietary image analysis and intelligent nutrition estimation \cite{Shen2020,Qi2025}.
+
+\noindent From an implementation perspective, the NUT will utilise a lightweight CNN architecture tailored for efficient server-side execution via TensorFlow Lite or ONNX Runtime frameworks. The image pipeline will include preprocessing stages such as colour normalisation, background segmentation, and depth-assisted edge detection to isolate food regions for feature extraction. Multimodal enhancement techniques, such as depth prediction and fusion, have been shown to improve food volume estimation and nutritional prediction accuracy \cite{Han2023,Singh2024,Bahador2021}. The recognised food items will then be cross-referenced against nutritional databases such as the USDA FoodData Central \cite{USDA2023} and Edamam API \cite{Edamam2024} to estimate energy and macronutrient content, particularly carbohydrate load, which is critical for glycaemic management in diabetic users \cite{Shen2020,Barron2023}. Moreover, the proposed architecture accommodates the incorporation of weight sensors to refine contextual calibration, reflecting recent research that highlights the benefits of multimodal data fusion for improving diet tracking accuracy \cite{Wang2023,Rosa2022}..
+
+\noindent Beyond its technical design, the NUT aligns with the broader movement in digital health technologies that promote proactive lifestyle management through self-monitoring rather than prescriptive diagnosis \cite{Patel2015}. In accordance with the UK's Medicines and Healthcare products Regulatory Agency (MHRA) guidance on \textit{Software and AI as a Medical Device }\cite{MHRA2024}, the subsystem is classified for \textit{decision support} rather than diagnostic intent. This ensures compliance with regulatory expectations for transparency, traceability, and performance validation of AI-based health applications. Accordingly, model training, validation, and deployment processes will adhere to fairness, explainability, and reproducibility principles to maintain ethical integrity and reliability in healthcare-adjacent software systems.
+
+\medskip
+
+\subsection{Activity Sensor System}
+\label{sec: Theory Introduction; Activity Sensor System}
+
+\noindent The ASS will constitute the wearable sensing component of the proposed platform, designed for continuous monitoring of physiological and activity-related parameters. Functioning as a wearable device, the ASS will integrate multiple biosensors to non-invasively measure heart rate, blood oxygen saturation (SpO\textsubscript{2}), body temperature, and bio-impedance. In addition to physiological sensing, environmental and inertial sensors will be incorporated to capture motion, posture, and ambient conditions, providing contextual awareness of the user’s surroundings and activity levels.
+
+\noindent Literature in wearable health monitoring consistently emphasises the importance of integrating multiple biometric sensors to enhance inference accuracy and facilitate a more comprehensive health assessment. For example, combining heart rate and motion data has been shown to enhance the estimation of energy expenditure. While integrating skin conductance and temperature measurements enables inference of hydration status and stress responses. Such multimodal data fusion significantly enhances the reliability of derived health metrics, offering a comprehensive view of physiological and behavioural states.
+
+\noindent Advanced multi-sensor health platforms demonstrate that concurrent acquisition of physiological signals can yield deep insights into the user's wellbeing, while also enabling early identification of anomalies and deviations from normal activity patterns. Bluetooth Low Energy (BLE) and Wi-Fi communication protocols will be incorporated to ensure seamless data transmission to the PP, without compromising mobility or battery efficiency, aligning with best practices outlined in recent wearable technology research.
+Through this integration, the ASS contributes to the broader system objective of correlating real-time physiological signals with nutritional and contextual data. By capturing multi-parameter information continuously and efficiently, the subsystem supports comprehensive lifestyle assessment, enabling the identification of patterns relevant to metabolic health.
+
+\subsubsection{Non-volatile Storage} \leavevmode
+
+\noindent The internal architecture of the ASS incorporates local data storage using a microSD card, enabling long-term retention of recorded sensor data. When the system enters an idle state with no user detected, data logging is temporarily suspended until activity resumes. All stored data is synchronised with the central server via Bluetooth when the user accesses the application.
+
+\subsubsection{Body Temperature System} \leavevmode
+
+\noindent The ASS will be worn on the user’s wrist, which presents challenges for accurately measuring body temperature, as wrist temperature is susceptible to external environmental influences and may not reliably reflect core body temperature. To improve accuracy, temperature readings can be synchronised with heart rate data, providing a closer estimation of core temperature without requiring invasive measurement methods. This approach represents a practical and minimally intrusive solution for assessing whether the user’s body temperature remains within a normal range.
+ 
+\subsubsection{Heart Rate system} \leavevmode
+
+\noindent Continuous heart rate monitoring is a fundamental component of the wearable health system; cardiac metrics serve as sensitive indicators of overall physiological status. Unlike conventional clinical assessments that provide only brief snapshots of cardiac activity, continuous wrist-based tracking can detect transient arrhythmias and other irregularities that might otherwise go unnoticed between medical evaluations \cite{jat2022smartwatch}. Beyond its diagnostic value, continuous monitoring offers reassurance to users and supports real-time alerting when deviations from expected heart rate ranges occur.
+
+  \begin{figure}[H]
+      \centering
+      \includegraphics[width=0.8\linewidth]{Images/IoT system diagram.pdf}
+      \caption{Visualising the mechanism of a photoplethysmograph (PPG) \cite{moraes2018advances}}
+      \label{fig:pranav-OMG}
+  \end{figure}
+
+\noindent Most contemporary smartwatches employ photoplethysmography (PPG) using integrated optical sensors \cite{majumder2017wearable}. PPG is a non-invasive optical technique that estimates blood flow dynamics by measuring variations in light absorption and reflection within the microvasculature. As seen in figure \ref{fig:pranav-OMG}, green or infrared LEDs illuminate the skin while a photodetector records the intensity of reflected or transmitted light; pulsatile fluctuations in blood volume modulate this signal, forming a waveform from which the heart rate is derived. Commercial implementations, such as those in the Apple Watch, sample these optical signals at high frequencies---typically hundreds of times per second---and report HR values within a range of approximately 30–210 beats per minute (bpm) \cite{apple2019heartrate}. Green LEDs are generally used during active periods or for heart-rate variability (HRV) analysis, while infrared LEDs facilitate low-power or background measurements. The extracted pulse intervals are then processed to compute heart rate estimates.
+
+\subsubsection{Glucose Sensor} \leavevmode
+
+\noindent Continuous glucose monitoring (CGM) offers insight into glucose trends and rates of change that intermittent finger-stick tests cannot provide. Keeping glucose within a physiological range (4–8 mmol/L, 72–144 mg/dL) is critical to lowering the risk of serious complications, including kidney disease, heart disease, stroke, and neuropathy  \cite{vashist2013cgm}. Real-time readings and alerts for actual or impending hypo- and hyperglycaemia, CGM can reduces both the pain and inconvenience of frequent finger-stick testing. While most commercial systems are minimally invasive, optical approaches---such as the HG1-c, which uses Raman spectroscopy to illuminate the skin and analyse the scattered signal---demonstrate a path to painless, non-invasive sensing  \cite{c8medisensors2011launch}.
+
+\subsubsection{Blood Oxygen} \leavevmode
+
+\noindent Peripheral capillary oxygen saturation (SpO\textsubscript{2}) is a key vital sign indicating the proportion of
+oxygenated haemoglobin in the bloodstream. SpO\textsubscript{2} monitoring is especially important for people with respiratory or cardiac disease, where infection can impair lung function. Clinically, maintaining SpO\textsubscript{2} $\ge 94\%$ is generally desirable \cite{majumder2017wearable}; values approaching $\sim 60\%$ may be life-threatening and demand immediate intervention \cite{wu2023iot}. SpO\textsubscript{2} is measured non-invasively by pulse oximetry using PPG. The method exploits wavelength-dependent absorption of red ($\approx 660\,\mathrm{nm}$) and infrared ($\approx 940\,\mathrm{nm}$) light by oxy- and deoxy-haemoglobin: oxygenation decreases red-light absorption, altering the detected light intensity. The dual LEDs illuminate tissue, and a photodetector measures the transmitted or reflected light; the SpO\textsubscript{2} estimate is then derived by comparing the pulsatile (AC) and baseline (DC) PPG components at both wavelengths. Sensors operate in either transmittance mode---light passes through, a fingertip reflectance mode LEDs and detector co-located. In practice, compact modules such as the MAX30100/MAX30102 integrate LEDs, photodiodes, and front-end signal conditioning, enabling reliable PPG capture for the platform \cite{vashist2013cgm}.
+
+\subsubsection{External Sensor System} \leavevmode
+ 
+\noindent The External sensors on the ASS are a crucial measure of the quality of the room environment, ensuring optimal conditions for patients in a healthcare monitoring system. Monitoring these external factors includes assessing temperature, humidity, and gas levels---for instance, CO and CO\textsubscript{2}.
+
+\noindent Temperature and Humidity Monitoring: Many sensors, such as DHT11 \cite{islam2020smart}, measure both temperature and humidity, which determine the quality of the room environment. Studies by RM Smith \cite{pubmedRaeA2025} say that patients prefer an air temperature between 21.5 and 22 °C, while reference \cite{islam2020smart} suggests that humidity should ideally range between 30\% and 65\%. 
+
+\noindent Gas Level Monitoring: The detection of toxic gases is highly significant, as certain gas levels can be detrimental to patient health. The World Health Organisation (WHO) states that 6.7 million premature deaths every year are caused by air pollution, and the gases responsible are carbon monoxide (CO), ozone (O\textsubscript{3}), nitrogen dioxide (NO\textsubscript{2}), and sulfur dioxide (SO\textsubscript{2}) \cite{who2021pollutants}. 
+
+\subsubsection{ Inertial Motion Unit (IMU)} \leavevmode
+
+\noindent The Activity Sensor System (ASS) will be designed to continuously monitor user movement in real time for the purpose of assessing overall health status.  By using an IMU, the device can track changes in position, velocity, and orientation and can identify specific actions such as walking, running, or even detecting more complex activities. One method of implementing an IMU system into the device is by using an Adafruit LSM6DSOX chip \cite{adafruit2020lsm6dsox}. 
+
+\noindent In this project, the Adafruit LSM6DSOX may be obtained either as a breakout board or as a standalone chip for direct integration. While breakout boards simplify prototyping, they include additional components that are redundant and unsuitable for a compact healthcare device optimised for minimal size. Consequently, this design will employ the standalone LSM6DSOX chip within a custom PCB layout. This approach allows the accelerometer and gyroscope to be positioned efficiently around other sensors that must remain close to the body or exposed to the environment. Moreover, the custom integration reduces power consumption by including only essential circuitry, enhancing the overall efficiency of the activity sensor system.
+
+\medskip
+
+\subsection{Pre-Processor}
+\label{sec: Theory Introduction; Pre-Processor}
+
+The PP serves as the central computational hub within the architecture, responsible for synchronising, structuring, and securely transmitting data between the NUT, ASS, and the Data Server. Data fusion and pre-processing are increasingly recognised as critical components in multimodal health systems, to ensure temporal alignment and contextual integration of heterogeneous data \cite{Bahador2021} and \cite{Singh2024}. The PP’s design will incorporate real-time tagging of data with timestamps and contextual metadata, and lightweight machine learning for on-device feedback generation. These functions mirror strategies seen in prior multimodal systems, which leverage local computation to provide immediate user feedback and reduce dependence on cloud processing \cite{Bahador2021}. For instance, feedback mechanisms prompting re-capture of unclear food images or hydration alerts based on physiological data echo recent developments in adaptive, user-centric feedback loops \cite{Rodin2022} and \cite{Wang2023}.
+
+\noindent The standardisation of data across diverse sensor modalities into a unified scheme facilitates efficient back-end processing and analytics, an approach similarly advocated in contemporary sensor fusion frameworks \cite{Bahador2021}. Furthermore, the emphasis on secure data handling through AES-256 encryption aligns with current best practices for safeguarding user privacy in digital health systems \cite{Rodin2022}. The PP effectively bridges hardware-level sensing and higher-order analytics, enabling a coherent, responsive, and secure data pipeline. 
+
+\subsubsection{Uplink Architecture and Data Flow} \leavevmode
+\label{sec: Theory Introduction; Uplink Architecture and Data Flow}
+
+\noindent From a systems perspective, command and control use MQTT over TLS to provide authenticated, reliable exchange of telemetry and downlink instructions. Devices maintain lightweight, persistent broker sessions, publish small and frequent sensor records to versioned topics with Quality of Service (QoS)~1 for at-least-once delivery, and rely on retained messages for last-known state with a last-will to signal unexpected disconnects \cite{oasis_mqtt_v5_2019,hivemq_tls_fundamentals_2024}.
+
+\noindent Two practical uplink paths are supported for transmitting device data to the server:
+
+\begin{enumerate}
+    \item direct to cloud (\textit{Device $\rightarrow$ Internet $\rightarrow$ Server}).
+
+    \item phone relay (\textit{Device $\rightarrow$ BLE $\rightarrow$ App $\rightarrow$ MQTT $\rightarrow$ Server}).
+\end{enumerate}
+
+\noindent This project adopts the phone relay approach because an app-mediated workflow simplifies cloud connectivity and avoids the cost and complexity of integrating a cellular modem and SIM into the device; the direct-to-cloud option remains appropriate for institutional deployments such as hospitals, where expecting end users to carry a mobile device is less realistic \cite{zachariah_gateway_problem_2015}.
+
+\begin{enumerate}
+    \item \noindent End-to-end data flow: Sensor data will be transmitted from the device to the mobile phone via BLE. The mobile application will receive and buffer these samples, issue basic control commands such as start, stop, or rate adjustment, and, if the device clock is unreliable, append phone-side timestamps to maintain correct data ordering before forwarding.
+    \item \noindent Phone ingest $\rightarrow$ process $\rightarrow$ send. The app should validate and reassemble incoming packets, place them into a small local queue, and upload whenever internet connectivity is available; if offline, it retains data and synchronises later.
+    \item \noindent BLE link (device $\rightarrow$ app); The device should expose telemetry and simple status---battery, health---over a low-power BLE link; the app batches when appropriate to conserve energy. Packets are sanity-checked before queuing. If BLE connectivity is lost, the device continues to log locally, and upon reconnection, the app requests missing segments by sequence number to fill gaps and keep the timeline complete.
+    \item \noindent Mobile relay app; On Android and iOS, the app will run unobtrusively in the background, maintaining BLE and cloud connections within each platform’s constraints. All records enter the local queue first and are uploaded as soon as connectivity is available. A single primary codebase is used with thin native components for Bluetooth and networking, while the web dashboard is maintained separately \cite{apple_background_execution_modes,android_background_limits_2025}.
+    \item \noindent Cloud uplink (app $\leftrightarrow$ server/broker); The app utilises a secure, authenticated connection to publish telemetry and receive commands, ensuring delivery at least once. The server removes duplicates if messages are retried. A lightweight heartbeat, coupled with a last-will, indicates online/offline state to support clean outage detection and recovery \cite{oasis_mqtt_v5_2019,hivemq_tls_fundamentals_2024}.\\
+\end{enumerate}
+
+\subsubsection{Server Platform} \leavevmode \leavevmode
+\label{sec: Theory Introduction; Server Platform} 
+
+\noindent The server will be a Raspberry~Pi, chosen for rapid, low-cost prototyping and for keeping sensitive data local \cite{raspberrypi5-product-brief-2025,ibm-what-is-edge-computing}.
+\noindent Despite its limited power budget, the system is capable of continuous 24/7 operation and can host the complete pilot software stack. This includes an ingest endpoint for device data, a compact time-series database for rapid timestamped queries, a lightweight message broker, and a minimal web/API layer. The setup eliminates reliance on external cloud services, enabling direct local access via remote SSH \cite{raspberrypi5-product-brief-2025,influxdata-install-influxdb-oss-v2,eclipse-mosquitto-docs,raspberrypi-remote-access-docs}.
+
+\noindent The hardware will consist of a Raspberry~Pi~5 with 8--16,GB of RAM, an external SSD, wired Ethernet (where available), and a small UPS for safe shutdowns. A minimal Linux server OS keeps the platform simple, reproducible, and easy to image or restore \cite{raspberrypi5-product-brief-2025,raspberrypi-remote-access-docs}.
+
+\noindent For storage, the core telemetry and ML outputs live in a relational SQL database on the Pi. Raw signals will be stored in time-partitioned tables---per day or week---with normal typed columns for frequently queried fields, and a flexible \texttt{JSON} column for additional metadata as needed. Processed results feature values, activity labels, confidence scores, and anomaly scores go into companion SQL tables, keyed by the same identifiers---device, timestamp, sequence---so everything aligns cleanly for queries and dashboards \cite{postgresql-16-10-documentation}. Images from the NUT will be stored as files on the SSD; the database stores only the file path and a hash---a digital fingerprint---to quickly locate and verify that each file has not changed \cite{postgresql-16-10-documentation}.
+
+\noindent The Raspberry~Pi will handle the machine-learning inference for both devices. It will not train the ML models, as that is better handled by a high-performance computer (hpc). The server should apply stored per-user calibration at inference, write the results into SQL tables---with file references for images---and tag every output with the active model version for audit purposes. When models are updated, the Pi pulls the new signed package and continues inference, keeping data on-premises for privacy and keeping the wearable simple and low-power \cite{onnxruntime-iot-deployment-raspberry-pi,ibm-what-is-edge-computing}.
+
+\subsubsection{Client--Server Interface} \leavevmode
+\label{sec: Theory Introduction; Client--Server Interface}
+
+\noindent The web and mobile applications will interface with the Raspberry~Pi server through a versioned REST API for routine operations and a lightweight live stream for real-time visual updates, adhering to modern API design principles \cite{microsoft_api_design}. Most pages will utilise the REST API for fast, cacheable requests, while only latency-sensitive views will depend on the live stream for immediate data updates \cite{rfc9111}. The API versioning ensures forward compatibility, allowing new features to be introduced without disrupting existing client functionality \cite{microsoft_api_design}.
+
+\noindent The system will support two reading modes: quick ``latest'' snapshots for status, and time-windowed history for charts and analysis. Long-range queries use pagination and lightweight aggregation so responses remain concise \cite{microsoft_api_design,rfc9111}. If the live stream is unavailable, the apps automatically fall back to periodic snapshot refresh, and any data collected while offline uploads later to maintain continuity \cite{mdn_offline_background}.
+
+\noindent All writes will pass through a single, resilient ingest path with idempotent retries to ensure data integrity \cite{microsoft_api_design}. Configuration and control will be exposed as small, focused actions, listing authorised devices, reading and updating settings, or sending short commands such as start/stop or adjust sampling. Software and model updates are staged, verified, applied atomically, and reversible \cite{android_background_limits_2025}.
+
+\noindent The user interface should include a device list and detailed views showing connection and battery status, live values, and simple charts, alongside a history explorer with filters and a control panel for data analysis and uploading food images to the server. It will synchronise automatically between the web and mobile apps when changes occur.
+
+\subsubsection{Security and Access} \leavevmode
+\label{sec: Theory Introduction; Security and Access}
+
+\noindent All data in transit is protected with TLS~1.3, and devices/apps authenticate with short-lived tokens or mutual-TLS client certificates \cite{rfc8446,nist80063b4}. Role-based access control (RBAC) limits what each account can see or do. Each request is tied to an authenticated user ID; ownership checks are enforced on every read/write; and, where supported, row-level security (RLS) ensures that users can query only their own records \cite{owaspASVS5}. Data at rest---database and files---is encrypted, and access is logged for audit \cite{owaspASVS5}.
+
+\noindent To prevent SQL injection, the server will use parametrised queries for every database call, validates inputs, and runs with least-privilege database accounts \cite{owaspASVS5}. Data integrity is going to be protected by per-device ordering, duplicate removal, and atomic writes, so partial failures never corrupt data \cite{owaspASVS5}. Backups run on a schedule with optional encrypted off-device copies, monitoring and alerts track ingest lag, disk space, CPU load, and overall service health \cite{owaspASVS5}.
+
+\medskip
+
+\section{Work Programme}
+\label{sec: Work Programme}
+
+\noindent This section defines the individual roles and responsibilities for the project and records the team contract. Its purpose is to set shared expectations for conduct, communication, decision-making, quality assurance, and risk/change management. Providing a clear governance framework that supports accountable, consistent, and standard-aligned collaboration. The contract exists to prevent ambiguity, outline how we will coordinate, and ensure ethical and safety compliance throughout the entire project. A task-level, time-phased breakdown of activities and ownership is provided in the project Gantt chart Section: \ref{sec: Apendix; Old Gannt Chart}.
+
+% Requires: \usepackage{booktabs,tabularx}
+\begin{table}[htbp]
+\centering
+\caption{outlines each team member’s primary role and associated responsibilities within the project, defining accountability across software, firmware, hardware, sensor integration, and machine learning development.}
+\label{tab:roles-responsibilities}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\linewidth}{@{} l l >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Team Member} & \textbf{Role} & \textbf{Responsibilities} \\
+\midrule
+David Cracknell & Software and IoT Lead &
+Designing and building the website user interface, as well as the hardware and software around it, including the servers and the SQL database for the project. \\
+
+Amaan Mujawar & Firmware Lead &
+Overall system architect with a specialisation in embedded microprocessors on both devices. \\
+
+Pranav Beeharry Panray & Sensor/Research Lead &
+Research and conduct testing on the sensors for the Activity Sensory System (ASS), running DSP, and validating results. \\
+
+Ben Meadows & Hardware Lead &
+Hardware design of the PCB boards on both devices, leading validation testing and casing design of the ASS. \\
+
+Cian Thomson & ML and Data Analysis Lead &
+Designing, training, and testing the ML for the Nutrition Unit Tracker (NUT) and helping in the development of the device. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\subsection{Team Contract}
+\label{sec: Project Management; Team Contract of agreed behavious, risk mangment and qulaity controls}
+
+\noindent The team’s purpose is to work respectfully and professionally to deliver a high-quality Master’s project. The team commits to clear, timely communication, punctuality, and reliability acknowledging messages within a reasonable time frame and providing early notice of any issues. Weekly meetings start and end on time, follow focused agendas, and produce brief minutes; these responsibilities rotate weekly. The team maintains a supportive, inclusive environment, gives and receives constructive feedback, and assumes good intent while holding one another to high standards.
+
+\noindent The team agrees to transparent working methods: decisions are recorded, project files are organised, and progress is visible to all. Discussions are kept within agreed channels, and any changes to scope or approach are documented. Disagreements are addressed privately and promptly. If unresolved, they are escalated to supervisors. Final outcomes are documented and followed through. Deadlines, academic policies, and all ethical and safety requirements are respected at all times.
+
+\noindent Quality requirements are unambiguous, and work meets acceptance criteria aligned with IEEE standards for writing, coding, and safety. Each deliverable is checked for fitness for purpose, peer-reviewed, tested where appropriate, and accompanied by clear notes or documentation. The team practises version control---via GitHub---and maintains traceability from requirements to evidence. Data are protected, sources are cited properly, and academic integrity is upheld at all times.
+
+\noindent Risks and change are managed proactively and are logged with owners; blockers are surfaced early; and, where necessary, emergency meetings may be convened to address time-critical issues. Material changes to scope, timelines, or deliverables require group agreement and an updated plan. By proceeding under this agreement, the team accepts shared accountability for the conduct, quality, and success of the project.\\
+
+\noindent By signing below, members acknowledge and agree to these terms, accepting responsibility for their commitments.\\
+
+\vspace{0.5em}
+\begin{tabular}{@{}p{0.68\linewidth}p{0.26\linewidth}@{}}
+Firmware \& Systems Architect: Amaan Mujawar & Date: \today \\ [0.6em]
+ML \& Data Lead: Cian Thomson & Date: \today \\ [0.6em]
+Hardware Designer: Benjamin Meadows & Date:  \today \\[0.6em]
+Sensor \& Lead Researcher: Pranav Beeharry Panray & Date:  \today \\[0.6em]
+Software and IoT Lead: David Cracknell & Date:  \today \\
+\end{tabular}
+
+\medskip
+
+\section{Lifecycle Model Proposal}
+\label{sec: Lifecycle Model Proposal}
+
+\noindent This project utilises a tailored V-Model so that the design can meet its intended specifications across the device's lifecycle. 
+\newline
+\noindent The advantage of using a V model is that it enables the project to be continuously checked in its initial stages, ensuring that no minor problems are overlooked and allowed to compromise the project's ability to meet its scope. Control documents will be used at each stage of the project to minimise the risks associated with integrating subsystems into a single finished product while maintaining a fixed academic timeline with multiple contributors.
+
+\noindent The model begins with the Project Requirements and Scope, where the overall objectives, boundaries, and deliverables are established, followed by the System Requirements and Constraints stage, which specifies detailed functional and non-functional requirements. The process then advances to Architecture and Interface Design,where the system is structured into components and their interactions are defined, and subsequently to Subsystem Development, which focuses on implementing individual modules according to detailed design specifications. Once components are developed, Integration and Data Fusion occurs to combine and synchronise subsystems into a unified whole, preparing the system for deployment during the Installation stage. On the testing and validation side, Unit and Module Testing ensures that individual components perform correctly, while Integration Testing verifies proper interaction and data exchange between modules. System Validation then confirms that the complete system fulfils all specified requirements and performs reliably in realistic conditions. Finally, Dissemination and Reporting concludes the process by documenting outcomes, presenting results to stakeholders, and ensuring that the final system meets the original project goals and expectations. Collectively, these stages demonstrate the V-Model’s emphasis on systematic development, verification, and validation to achieve a high-quality reliable system.
+
+
+ \begin{figure}[H]
+  \centering
+  \includegraphics[width=1\textwidth]{Images/Copy of V model.drawio.pdf}
+  % \includegraphics[width=0.7\textwidth]{figures/s}
+  \caption{\textit{Overview of the V-Model implemented in the project life cycle} }
+  \label{fig:v-model}
+\end{figure}
+
+\medskip
+
+\section{Project Schedule and Plan}
+\label{sec: Project Schedule and Plan}
+
+The project is divided into five structured phases: 
+1) Initialisation, 
+2) Subsystem Development, 
+3) Integration and Data Fusion, 
+4) Testing and Validation, and 
+5) {Dissemination and Reporting}. 
+Each phase includes specific technical, research, and validation milestones to ensure systematic progress towards a fully functional multimodal lifestyle monitoring system.
+\begin{spacing}{1.3}
+
+\medskip
+    
+\subsubsection*{Phase 1: Initialisation}
+
+\begin{itemize}
+    \item \textbf{Task 1.1:} Define the overall project scope, aims, and deliverables in collaboration with the supervisor.
+    \item \textbf{Task 1.2:} Conduct an extensive literature review on multimodal sensing, wearable technologies, and machine learning applications in nutrition and health monitoring.
+    \item \textbf{Task 1.3:} Identify existing frameworks and datasets (Food-101, UEC-Food256, Recipe1M+) for model training and benchmarking.
+    \item \textbf{Task 1.4:} Review MHRA’s \textit{Software and AI as a Medical Device} guidance to ensure regulatory and ethical compliance.
+    \item \textbf{Task 1.5:} Draft the initial architecture diagram, defining interfaces between the NUT, ASS, and PP subsystems.
+    \item \textbf{Task 1.6:} Complete the Project Initialisation Document (PID), detailing project motivation, theoretical foundation, and preliminary design.
+\end{itemize}
+
+
+\noindent \textbf{Deliverable:} Approved PID, literature review summary, and finalised system architecture diagram.
+
+\medskip
+
+\subsubsection*{Phase 2: Subsystem Development}\leavevmode
+
+\noindent 2.1 Nutritional Unit Tracker (NUT)
+\begin{itemize}
+    \item \textbf{Task 2.1.1:} Design CNN-based image recognition model architecture (using TensorFlow/PyTorch).
+    \item \textbf{Task 2.1.2:} Implement data preprocessing pipeline (colour normalisation, segmentation, background removal).
+    \item \textbf{Task 2.1.3:} Train and fine-tune CNN using Food-101 datasets.
+    \item \textbf{Task 2.1.4:} Integrate API connections to USDA FoodData Central or Edamam for nutritional data retrieval.
+    \item \textbf{Task 2.1.5:} Develop image capture interface for user uploads (local or live camera feed).
+\end{itemize}
+
+\noindent \textbf{Deliverable:} Functional NUT module capable of recognising meals and estimating nutritional values.
+
+\noindent 2.2 Activity Sensor System (ASS)
+\begin{itemize}
+    \item \textbf{Task 2.2.1:} Select appropriate biosensors (HR, SpO\textsubscript{2}, GSR, temperature, IMU, glucose).
+    \item \textbf{Task 2.2.2:} Interface sensors with microcontroller (e.g., ESP32/Arduino) using I2C/SPI protocols.
+    \item \textbf{Task 2.2.3:} Develop embedded firmware for continuous data acquisition and transmission via BLE/Wi-Fi.
+    \item \textbf{Task 2.2.4:} Calibrate and test each sensor independently for baseline accuracy.
+    \item \textbf{Task 2.2.5:} Implement power management and local buffering for low-power operation.
+\end{itemize}
+
+\noindent \textbf{Deliverable:} Fully operational wearable prototype for physiological and activity monitoring.
+
+\noindent 2.3 Pre-Processor (PP)
+\begin{itemize}
+    \item \textbf{Task 2.3.1:} Develop the central data management module for fusion, timestamping, and error correction.
+    \item \textbf{Task 2.3.2:} Implement MQTT/HTTP communication protocols between PP and subsystems.
+    \item \textbf{Task 2.3.3:} Establish data storage pipeline (local SQL or cloud Firebase).
+    \item \textbf{Task 2.3.4:} Add AES-256 encryption for secure data handling and transmission.
+\end{itemize}
+
+\noindent \textbf{Deliverable:} PP capable of synchronising, structuring, and transmitting multimodal sensor data.
+
+\medskip
+
+\subsubsection*{Phase 3: Integration and Data Fusion}
+
+\begin{itemize}
+    \item \textbf{Task 3.1:} Integrate NUT, ASS, and PP modules into a unified system architecture.
+    \item \textbf{Task 3.2:} Establish synchronisation logic between physiological data and food recognition events.
+    \item \textbf{Task 3.3:} Develop data fusion algorithms for correlating calorie intake, physical activity, and sensor parameters.
+    \item \textbf{Task 3.4:} Design a lightweight dashboard or app for data visualisation and feedback presentation.
+    \item \textbf{Task 3.5:} Perform latency and bandwidth testing across all communication channels.
+    \item \textbf{Task 3.6:} Implement integrated system to prototype breadboard.
+    \item \textbf{Task 3.7:} Design PCB based on Prototype.
+\end{itemize}
+
+\noindent \textbf{Deliverable:} Integrated and interoperable multimodal system with live data correlation.
+
+\medskip
+
+\subsubsection*{Phase 4: Testing and Validation}\leavevmode
+
+\noindent 4.1 Functional Testing
+\begin{itemize}
+    \item \textbf{Task 4.1.1:} Conduct controlled testing of CNN classification accuracy on unseen datasets.
+    \item \textbf{Task 4.1.2:} Test physiological sensor accuracy against reference medical-grade datasets.
+    \item \textbf{Task 4.1.3:} Validate power efficiency and communication stability under continuous operation.
+\end{itemize}
+
+\noindent 4.2 System Validation
+\begin{itemize}
+    \item \textbf{Task 4.2.1:} Evaluate overall data fusion accuracy and latency using multi-sensor test scenarios.
+    \item \textbf{Task 4.2.2:} Assess end-to-end data flow integrity from capture to visualisation.
+    \item \textbf{Task 4.2.3:} Perform pilot user trials to assess comfort, usability, and reliability.
+    \item \textbf{Task 4.2.4:} Document all results for comparison with literature benchmarks.
+\end{itemize}
+
+\noindent \textbf{Deliverable:} Validation report covering model accuracy, sensor performance, and user experience findings.
+
+\medskip
+
+\subsubsection*{Phase 5: Dissemination and Reporting}
+
+\begin{itemize}
+    \item \textbf{Task 5.1:} Prepare an interim presentation summarising design progress and preliminary results.
+    \item \textbf{Task 5.2:} Create an interim report detailing the current project successes and goals.
+    \item \textbf{Task 5.3:} Present results at the departmental showcase or symposium.
+    \item \textbf{Task 5.4:} Compile a comprehensive final report in IEEE format covering system design, methods, and findings.
+\end{itemize}
+
+\noindent \textbf{Deliverable:} Final report, presentation materials, and dissemination artefacts.
+\end{spacing}
+
+\medskip
+
+\section{Risk Register and Contingency Plan}
+\label{sec: Risk Register and Contingency Plan}
+
+\subsection{Risk Register}
+\label{sec: Risk Register and Contingency Plan; Risk Register}
+
+The risk register provides a structured overview of potential hazards that could impact the success and safety of the project, outlining how each risk is identified, evaluated, and managed. It lists significant hazards such as electrical risks, eye hazards, illness or injury, delays, part sourcing issues, data loss, communication difficulties, and hardware or software malfunctions. For each identified hazard, the register details the possible harm, the individuals or groups affected, and the existing control measures already in place to mitigate the risk. The table assigns a risk rating based on likelihood and severity, helping to quantify the level of concern associated with each issue. It then specifies additional control measures to further reduce the risks to an acceptable level, followed by the resulting residual risk after these actions are applied. Finally, each entry includes a corresponding action number for tracking and accountability. 
+
+\begin{table}[htbp]
+\centering
+\caption{shows a comprehensive assessment of all potential project risks that may affect safety, schedule, or deliverables during the development of the multimodal lifestyle monitoring system. Each identified hazard is analysed according to its likelihood (L) and severity (S), producing a quantified risk rating (RR) in line with the classification key provided in Appendix Section~\ref{sec: Apendix; Risk Register Key}.}
+\end{table}
+
+\begin{landscape}
+\thispagestyle{empty}
+
+\thispagestyle{empty}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1\linewidth]{Images/Risk Register Part 1.pdf}
+    \label{fig:RiskRegiseter1}
+\end{figure}
+
+\end{landscape}
+
+\begin{landscape}
+\thispagestyle{empty}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1\linewidth]{Images/Risk Register Part 2.pdf}
+    \label{fig:RiskRegister2}
+\end{figure}
+
+\medskip
+
+\subsection{Contingency Plan}
+\label{sec: Risk Register and Contingency Plan; Contingency plan}
+
+The contingency plan outlines the project’s proactive approach to managing unexpected events and minimising potential disruptions. It identifies key risks that could affect project progress---such as loss of critical information, incomplete work packages, budget limitations, procurement issues, changes in healthcare regulations, unavailability of team members, data access problems, and delays in deliverables. For each risk, the plan specifies early warning indicators or triggers that signal when contingency actions may be required. It then details the specific actions to be taken, assigns responsibility to designated team members, and includes fallback plans to ensure continuity where possible. The final column identifies who should be informed to maintain transparency and coordinated communication across the project team. Collectively, this contingency plan ensures that all foreseeable challenges are addressed with predefined responses, enabling the project to maintain momentum, meet deadlines, and safeguard data integrity even when unexpected issues arise.
+
+\begin{table}[htbp]
+\centering
+\caption{presents the contingency plan outlining predefined responses to potential project disruptions identified in the risk register. Each entry specifies the risk trigger or early warning indicator, the corresponding contingency actions to be taken, the responsible team member, and the fallback plan to ensure project continuity.}
+\end{table}
+
+
+\end{landscape}
+
+\begin{landscape}
+\thispagestyle{empty}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1\linewidth]{Images/Contingency Plan.pdf}
+    \label{fig:PIDGantt}
+\end{figure}
+
+\end{landscape}
+
+\newpage
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\section{Appendix}
+\label{sec: Apendix}
+
+\begin{landscape}
+\subsection{Initial Gantt Chart}
+\label{sec: Apendix; Old Gannt Chart}
+\thispagestyle{empty}
+\vspace{10mm}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1\linewidth]{Images/GANTT-1_cropped.pdf}
+    \caption{Initial proposed Gantt chart}
+    \label{fig:PIDGantt}
+\end{figure}
+\end{landscape}
+
+\begin{landscape}
+\thispagestyle{empty}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1\linewidth]{Images/GANTT-2_cropped.pdf}
+    \caption{Initial proposed Gantt chart continued}
+    \label{fig:PIDGantt-cont}
+\end{figure}
+\end{landscape}
+
+\begin{landscape}
+\thispagestyle{empty}
+\subsection{Risk Register Key}
+\label{sec: Apendix; Risk Register Key}
+\vspace{10mm}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1\linewidth]{Images/Risk Register Key.pdf}
+    \caption{Risk register key}
+    \label{fig:Risk Register Key}
+\end{figure}
+\end{landscape}
+
+\end{document}
