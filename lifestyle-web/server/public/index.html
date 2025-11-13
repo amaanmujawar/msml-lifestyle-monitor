@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MSML Lifestyle Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="dot"></span>
+        <div>
+          <p class="eyebrow">MSML</p>
+          <h1>Lifestyle</h1>
+        </div>
+      </div>
+
+      <div class="profile-card" id="profileCard">
+        <div class="avatar shimmer"></div>
+        <div>
+          <p class="label">Signed out</p>
+          <p class="muted">Use demo credentials to explore the dashboard.</p>
+        </div>
+      </div>
+
+      <div class="nav">
+        <span>Overview</span>
+        <span>Sessions</span>
+        <span>Readiness</span>
+        <span>Nutrition</span>
+      </div>
+
+      <div class="tip-card">
+        <p class="eyebrow">Coach Note</p>
+        <p>Balance hard sessions with mobility work to boost readiness.</p>
+      </div>
+    </aside>
+
+    <main>
+      <section class="glass login-panel" id="loginPanel">
+        <div>
+          <p class="eyebrow">Welcome back</p>
+          <h2>Sign in to sync your day</h2>
+          <p class="muted">Use the demo accounts listed in the README or connect your own backend later.</p>
+        </div>
+
+        <form id="loginForm">
+          <label>
+            Email
+            <input type="email" name="email" placeholder="avery.hart@example.com" required />
+          </label>
+          <label>
+            Password
+            <input type="password" name="password" placeholder="••••••••" required />
+          </label>
+          <button type="submit">Enter Dashboard</button>
+          <p class="form-feedback" id="loginFeedback"></p>
+        </form>
+      </section>
+
+      <section class="dashboard hidden" id="dashboard">
+        <header class="dashboard-header">
+          <div>
+            <p class="eyebrow" id="greeting">Dashboard</p>
+            <h2>Daily Readiness + Fuel</h2>
+          </div>
+          <div class="status-pill" id="readinessHeadline">Readiness tracking</div>
+        </header>
+
+        <div class="summary-grid" id="summaryGrid">
+          <article class="metric-card">
+            <p class="label">Steps</p>
+            <h3 id="stepsValue">—</h3>
+            <p class="trend" id="stepsTrend">Awaiting data</p>
+          </article>
+          <article class="metric-card">
+            <p class="label">Calories</p>
+            <h3 id="caloriesValue">—</h3>
+            <p class="trend" id="caloriesTrend">Awaiting data</p>
+          </article>
+          <article class="metric-card">
+            <p class="label">Sleep</p>
+            <h3 id="sleepValue">—</h3>
+            <p class="trend" id="sleepTrend">Awaiting data</p>
+          </article>
+          <article class="metric-card">
+            <p class="label">Readiness</p>
+            <h3 id="readinessValue">—</h3>
+            <p class="trend" id="readinessTrend">Awaiting data</p>
+          </article>
+        </div>
+
+        <div class="chart-grid">
+          <article class="glass chart-card">
+            <div class="card-header">
+              <p class="eyebrow">Movement Load</p>
+              <h3>Steps vs Calories</h3>
+            </div>
+            <canvas id="activityChart" height="220"></canvas>
+          </article>
+
+          <article class="glass chart-card">
+            <div class="card-header">
+              <p class="eyebrow">Fuel Split</p>
+              <h3>Macro Balance</h3>
+            </div>
+            <canvas id="macroChart" height="220"></canvas>
+          </article>
+
+          <article class="glass chart-card span-2">
+            <div class="card-header">
+              <p class="eyebrow">Readiness arc</p>
+              <h3>Stress vs Recovery</h3>
+            </div>
+            <canvas id="readinessChart" height="240"></canvas>
+          </article>
+        </div>
+
+        <div class="insight-grid">
+          <article class="glass insight-card">
+            <div class="card-header">
+              <p class="eyebrow">Hydration</p>
+              <h3>Fluid Rhythm</h3>
+            </div>
+            <ul id="hydrationList"></ul>
+          </article>
+          <article class="glass insight-card">
+            <div class="card-header">
+              <p class="eyebrow">Heart Rate</p>
+              <h3>Zone Minutes</h3>
+            </div>
+            <ul id="heartRateList"></ul>
+          </article>
+          <article class="glass insight-card">
+            <div class="card-header">
+              <p class="eyebrow">Sleep</p>
+              <h3>Stage Composition</h3>
+            </div>
+            <div id="sleepSummary"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js" type="module"></script>
+</body>
+
+</html>

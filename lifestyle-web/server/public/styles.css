@@ -1,0 +1,353 @@
+:root {
+  color-scheme: dark;
+  --bg: #010915;
+  --panel: rgba(9, 22, 45, 0.85);
+  --glass: rgba(13, 36, 69, 0.75);
+  --accent: #4df5ff;
+  --accent-strong: #5f6bff;
+  --muted: #8ea2c8;
+  --gradient: linear-gradient(135deg, #0b2f70, #6e33d4, #27d2fe);
+  --border: rgba(255, 255, 255, 0.08);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: #f5f7ff;
+  min-height: 100vh;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: #030e20;
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  border-right: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand .dot {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: var(--gradient);
+  box-shadow: 0 10px 30px rgba(65, 143, 255, 0.3);
+}
+
+.brand .eyebrow {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.profile-card {
+  background: var(--panel);
+  border-radius: 18px;
+  padding: 1.25rem;
+  display: flex;
+  gap: 1rem;
+  border: 1px solid var(--border);
+}
+
+.avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  object-fit: cover;
+}
+
+.shimmer {
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.15));
+  animation: shimmer 2s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -50%;
+  }
+  to {
+    background-position: 150%;
+  }
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.nav span {
+  padding: 0.5rem 0.25rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: color 150ms;
+}
+
+.nav span:hover {
+  color: #fff;
+}
+
+.tip-card {
+  margin-top: auto;
+  padding: 1.25rem;
+  border-radius: 18px;
+  border: 1px dashed var(--border);
+  background: rgba(77, 245, 255, 0.06);
+}
+
+main {
+  padding: 2.5rem;
+  background: radial-gradient(circle at top, rgba(53, 123, 255, 0.25), transparent 45%), var(--bg);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+
+.muted {
+  color: var(--muted);
+  margin: 0;
+}
+
+.glass {
+  background: var(--glass);
+  border-radius: 24px;
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(5, 10, 30, 0.45);
+}
+
+.login-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+label {
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+input {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(6, 16, 35, 0.9);
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  color: #fff;
+  font-size: 1rem;
+}
+
+button {
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  background: linear-gradient(120deg, #27d2fe 0%, #5f6bff 60%, #a95dff 100%);
+  color: #050a18;
+  letter-spacing: 0.02em;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+.form-feedback {
+  min-height: 1.25rem;
+  font-size: 0.85rem;
+  color: #ff8ba7;
+}
+
+.dashboard.hidden {
+  display: none;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.status-pill {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card {
+  padding: 1.5rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: rgba(5, 15, 32, 0.9);
+}
+
+.metric-card h3 {
+  font-size: 2.1rem;
+  margin: 0.35rem 0;
+}
+
+.label {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.trend {
+  color: #8fffd3;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.75rem;
+  margin-bottom: 2rem;
+}
+
+.chart-card {
+  min-height: 280px;
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
+.card-header {
+  margin-bottom: 1rem;
+}
+
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.insight-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.insight-card li {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 500;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#sleepSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#sleepSummary div {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 1040px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .profile-card {
+    flex: 1 1 240px;
+  }
+
+  main {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .glass,
+  .metric-card {
+    padding: 1.25rem;
+  }
+
+  .login-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2 {
+    grid-column: span 1;
+  }
+}
