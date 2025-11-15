@@ -1,30 +1,62 @@
 const express = require('express');
-const crypto = require('crypto');
 const db = require('../db');
 const { createSession, destroySession, authenticate } = require('../services/session-store');
+const { hashPassword } = require('../utils/hash-password');
 
 const router = express.Router();
 
-function hash(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
-
 router.post('/', (req, res) => {
   const { email, password } = req.body;
+  const identifier = typeof email === 'string' ? email.trim() : '';
+  const secret = typeof password === 'string' ? password : '';
 
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required.' });
+  if (!identifier || !secret) {
+    return res.status(400).json({ message: 'Email/username and password are required.' });
   }
 
-  const user = db
-    .prepare(
-      `SELECT id, name, email, role, avatar_url, goal_steps, goal_calories, goal_sleep, goal_readiness, password_hash
-       FROM users
-       WHERE email = ?`
-    )
-    .get(email.trim().toLowerCase());
+  const normalizedIdentifier = identifier.toLowerCase();
 
-  if (!user || user.password_hash !== hash(password)) {
+  const defaultSelection = `
+    SELECT id, name, email, role, avatar_url, goal_steps, goal_calories, goal_sleep, goal_readiness, password_hash
+    FROM users
+    WHERE %IDENTIFIER_CLAUSE%
+    LIMIT 1
+  `;
+
+  const emailMatch = db
+    .prepare(defaultSelection.replace('%IDENTIFIER_CLAUSE%', 'LOWER(email) = ?'))
+    .get(normalizedIdentifier);
+
+  let user = emailMatch;
+
+  if (!user) {
+    const fallback = db
+      .prepare(
+        defaultSelection.replace(
+          '%IDENTIFIER_CLAUSE%',
+          `
+          LOWER(name) = @id
+          OR LOWER(REPLACE(name, ' ', '')) = @id
+          OR LOWER(
+            CASE
+              WHEN instr(name, ' ') = 0 THEN name
+              ELSE substr(name, 1, instr(name, ' ') - 1)
+            END
+          ) = @id
+          OR LOWER(
+            CASE
+              WHEN instr(email, '@') > 0 THEN substr(email, 1, instr(email, '@') - 1)
+              ELSE email
+            END
+          ) = @id
+        `
+        )
+      )
+      .get({ id: normalizedIdentifier });
+    user = fallback;
+  }
+
+  if (!user || user.password_hash !== hashPassword(secret)) {
     return res.status(401).json({ message: 'Invalid credentials.' });
   }
 

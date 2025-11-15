@@ -33,11 +33,19 @@
         </div>
       </div>
 
-      <div class="nav">
-        <span>Overview</span>
-        <span>Sessions</span>
-        <span>Readiness</span>
-        <span>Nutrition</span>
+      <div class="nav" id="sideNav">
+        <button type="button" class="nav-item active" data-page="overview" aria-pressed="true">
+          Overview
+        </button>
+        <button type="button" class="nav-item" data-page="sessions" aria-pressed="false">
+          Sessions
+        </button>
+        <button type="button" class="nav-item" data-page="readiness" aria-pressed="false">
+          Readiness
+        </button>
+        <button type="button" class="nav-item" data-page="nutrition" aria-pressed="false">
+          Nutrition
+        </button>
       </div>
 
       <div class="tip-card">
@@ -49,106 +57,299 @@
     <main>
       <section class="glass login-panel" id="loginPanel">
         <div>
-          <p class="eyebrow">Welcome back</p>
-          <h2>Sign in to sync your day</h2>
-          <p class="muted">Use the demo accounts listed in the README or connect your own backend later.</p>
+          <p class="eyebrow">Welcome</p>
+          <h2>Sync your day</h2>
+          <p class="muted">
+            Use a demo login from the README or create your own account to explore the dashboard.
+          </p>
         </div>
 
-        <form id="loginForm">
-          <label>
-            Email
-            <input type="email" name="email" placeholder="avery.hart@example.com" required />
-          </label>
-          <label>
-            Password
-            <input type="password" name="password" placeholder="••••••••" required />
-          </label>
-          <button type="submit">Enter Dashboard</button>
-          <p class="form-feedback" id="loginFeedback"></p>
-        </form>
+        <div class="auth-stack">
+          <div class="auth-tabs" id="authTabs">
+            <button type="button" class="active" data-auth-mode="login">Sign in</button>
+            <button type="button" data-auth-mode="signup">Create account</button>
+          </div>
+
+          <form id="loginForm" autocomplete="on">
+            <label>
+              Email or username
+              <input type="text" name="email" placeholder="avery.hart@example.com or avery" required />
+            </label>
+            <label>
+              Password
+              <input type="password" name="password" placeholder="••••••••" required />
+            </label>
+            <button type="submit">Enter Dashboard</button>
+            <p class="form-feedback" id="loginFeedback"></p>
+          </form>
+
+          <form id="signupForm" class="hidden" autocomplete="on">
+            <label>
+              Full name
+              <input type="text" name="name" placeholder="Jordan Castillo" required minlength="2" />
+            </label>
+            <label>
+              Email
+              <input type="email" name="email" placeholder="you@example.com" required />
+            </label>
+            <label>
+              Password
+              <input type="password" name="password" placeholder="Minimum 8 characters" required minlength="8" />
+            </label>
+            <div class="avatar-picker">
+              <div class="avatar-picker-header">
+                <p class="label">Avatar</p>
+                <p class="muted small-text">Pick an icon or paste your own PNG/WebP.</p>
+              </div>
+              <div class="avatar-options" id="avatarOptions">
+                <button
+                  type="button"
+                  class="avatar-option active"
+                  data-avatar-option="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80"
+                  aria-label="Gradient athlete avatar">
+                  <img
+                    src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=120&q=60"
+                    alt="" />
+                </button>
+                <button
+                  type="button"
+                  class="avatar-option"
+                  data-avatar-option="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80"
+                  aria-label="Smiling coach avatar">
+                  <img
+                    src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=60"
+                    alt="" />
+                </button>
+                <button
+                  type="button"
+                  class="avatar-option"
+                  data-avatar-option="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80"
+                  aria-label="Wellness lead avatar">
+                  <img
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=60"
+                    alt="" />
+                </button>
+                <button type="button" class="avatar-option" data-avatar-option="custom">Upload link</button>
+              </div>
+              <label class="custom-avatar-field">
+                Custom image URL
+                <input type="url" id="customAvatarInput" placeholder="https://example.com/me.png" />
+              </label>
+              <input
+                type="hidden"
+                name="avatar"
+                id="avatarValue"
+                value="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80" />
+            </div>
+            <button type="submit">Create Account</button>
+            <p class="form-feedback" id="signupFeedback"></p>
+          </form>
+        </div>
       </section>
 
       <section class="dashboard hidden" id="dashboard">
         <header class="dashboard-header">
           <div>
             <p class="eyebrow" id="greeting">Dashboard</p>
-            <h2>Daily Readiness + Fuel</h2>
+            <h2 id="pageTitle">Daily Readiness + Fuel</h2>
+            <p class="muted" id="pageSubtitle">Live snapshot of movement, fuel, and recovery.</p>
+            <p class="muted viewing-chip" id="viewingChip">Viewing your own performance</p>
           </div>
-          <div class="status-pill" id="readinessHeadline">Readiness tracking</div>
+          <div class="header-actions">
+            <div class="status-pill" id="readinessHeadline">Readiness tracking</div>
+            <button type="button" class="outline-btn" id="logoutButton">Log out</button>
+          </div>
         </header>
 
-        <div class="summary-grid" id="summaryGrid">
-          <article class="metric-card">
-            <p class="label">Steps</p>
-            <h3 id="stepsValue">—</h3>
-            <p class="trend" id="stepsTrend">Awaiting data</p>
+        <section class="glass coach-panel hidden" id="coachPanel">
+          <div class="coach-panel-header">
+            <div>
+              <p class="eyebrow">Team Board</p>
+              <h3>Shared Athlete Ranking</h3>
+            </div>
+            <label class="switcher">
+              <span>Currently viewing</span>
+              <select id="athleteSwitcher">
+                <option value="self">My dashboard</option>
+              </select>
+            </label>
+          </div>
+          <ul class="coach-ranking" id="coachRanking"></ul>
+          <p class="form-feedback" id="adminFeedback"></p>
+        </section>
+
+        <div class="subpage" data-subpage="overview">
+          <div class="summary-grid" id="summaryGrid">
+            <article class="metric-card">
+              <p class="label">Steps</p>
+              <h3 id="stepsValue">—</h3>
+              <p class="trend" id="stepsTrend">Awaiting data</p>
+            </article>
+            <article class="metric-card">
+              <p class="label">Calories</p>
+              <h3 id="caloriesValue">—</h3>
+              <p class="trend" id="caloriesTrend">Awaiting data</p>
+            </article>
+            <article class="metric-card">
+              <p class="label">Sleep</p>
+              <h3 id="sleepValue">—</h3>
+              <p class="trend" id="sleepTrend">Awaiting data</p>
+            </article>
+            <article class="metric-card">
+              <p class="label">Readiness</p>
+              <h3 id="readinessValue">—</h3>
+              <p class="trend" id="readinessTrend">Awaiting data</p>
+            </article>
+          </div>
+
+          <div class="chart-grid">
+            <article class="glass chart-card">
+              <div class="card-header">
+                <p class="eyebrow">Movement Load</p>
+                <h3>Steps vs Calories</h3>
+              </div>
+              <canvas id="activityChart" height="220"></canvas>
+            </article>
+
+            <article class="glass chart-card">
+              <div class="card-header">
+                <p class="eyebrow">Fuel Split</p>
+                <h3>Macro Balance</h3>
+              </div>
+              <canvas id="macroChart" height="220"></canvas>
+            </article>
+
+            <article class="glass chart-card span-2">
+              <div class="card-header">
+                <p class="eyebrow">Readiness arc</p>
+                <h3>Stress vs Recovery</h3>
+              </div>
+              <canvas id="readinessChart" height="240"></canvas>
+            </article>
+          </div>
+
+          <div class="insight-grid">
+            <article class="glass insight-card">
+              <div class="card-header">
+                <p class="eyebrow">Hydration</p>
+                <h3>Fluid Rhythm</h3>
+              </div>
+              <ul id="hydrationList"></ul>
+            </article>
+            <article class="glass insight-card">
+              <div class="card-header">
+                <p class="eyebrow">Heart Rate</p>
+                <h3>Zone Minutes</h3>
+              </div>
+              <ul id="heartRateList"></ul>
+            </article>
+            <article class="glass insight-card">
+              <div class="card-header">
+                <p class="eyebrow">Sleep</p>
+                <h3>Stage Composition</h3>
+              </div>
+              <div id="sleepSummary"></div>
+            </article>
+          </div>
+        </div>
+
+        <div class="subpage hidden" data-subpage="sessions">
+          <article class="glass session-card">
+            <div class="card-header">
+              <p class="eyebrow">Training Log</p>
+              <h3>Recent Sessions</h3>
+            </div>
+            <ul class="session-list" id="sessionsList"></ul>
           </article>
-          <article class="metric-card">
-            <p class="label">Calories</p>
-            <h3 id="caloriesValue">—</h3>
-            <p class="trend" id="caloriesTrend">Awaiting data</p>
-          </article>
-          <article class="metric-card">
-            <p class="label">Sleep</p>
-            <h3 id="sleepValue">—</h3>
-            <p class="trend" id="sleepTrend">Awaiting data</p>
-          </article>
-          <article class="metric-card">
-            <p class="label">Readiness</p>
-            <h3 id="readinessValue">—</h3>
-            <p class="trend" id="readinessTrend">Awaiting data</p>
+
+          <article class="glass highlight-card">
+            <div class="card-header">
+              <p class="eyebrow">Coach Focus</p>
+              <h3>Next Week Emphasis</h3>
+            </div>
+            <p class="muted" id="sessionsSummary">
+              Build consistency with 3 aerobic sessions and 2 strength touches.
+            </p>
           </article>
         </div>
 
-        <div class="chart-grid">
-          <article class="glass chart-card">
+        <div class="subpage hidden" data-subpage="readiness">
+          <article class="glass readiness-panel">
             <div class="card-header">
-              <p class="eyebrow">Movement Load</p>
-              <h3>Steps vs Calories</h3>
+              <p class="eyebrow">Trend Watch</p>
+              <h3>Readiness Breakdown</h3>
             </div>
-            <canvas id="activityChart" height="220"></canvas>
+            <div class="readiness-grid" id="readinessGrid"></div>
           </article>
 
-          <article class="glass chart-card">
-            <div class="card-header">
-              <p class="eyebrow">Fuel Split</p>
-              <h3>Macro Balance</h3>
-            </div>
-            <canvas id="macroChart" height="220"></canvas>
-          </article>
-
-          <article class="glass chart-card span-2">
-            <div class="card-header">
-              <p class="eyebrow">Readiness arc</p>
-              <h3>Stress vs Recovery</h3>
-            </div>
-            <canvas id="readinessChart" height="240"></canvas>
-          </article>
-        </div>
-
-        <div class="insight-grid">
           <article class="glass insight-card">
+            <div class="card-header">
+              <p class="eyebrow">Signals</p>
+              <h3>Stress ⇄ Recovery Notes</h3>
+            </div>
+            <ul id="readinessNotes" class="readiness-notes"></ul>
+          </article>
+        </div>
+
+        <div class="subpage hidden" data-subpage="nutrition">
+          <article class="glass nutrition-card">
+            <div class="card-header">
+              <p class="eyebrow">Macro Focus</p>
+              <h3>Daily Fuel Mix</h3>
+            </div>
+            <div class="macro-breakdown" id="macroBreakdown"></div>
+          </article>
+
+          <article class="glass hydration-card">
             <div class="card-header">
               <p class="eyebrow">Hydration</p>
-              <h3>Fluid Rhythm</h3>
+              <h3>Fluid Status</h3>
             </div>
-            <ul id="hydrationList"></ul>
-          </article>
-          <article class="glass insight-card">
-            <div class="card-header">
-              <p class="eyebrow">Heart Rate</p>
-              <h3>Zone Minutes</h3>
-            </div>
-            <ul id="heartRateList"></ul>
-          </article>
-          <article class="glass insight-card">
-            <div class="card-header">
-              <p class="eyebrow">Sleep</p>
-              <h3>Stage Composition</h3>
-            </div>
-            <div id="sleepSummary"></div>
+            <div class="hydration-stats" id="hydrationStats"></div>
           </article>
         </div>
+
+        <section class="glass share-panel hidden" id="sharePanel">
+          <div>
+            <p class="eyebrow">Share Data</p>
+            <h3>Invite your coach</h3>
+            <p class="muted">
+              Grant a coach access by entering their email. You stay in control and can invite more
+              than one coach.
+            </p>
+          </div>
+          <form id="shareForm" class="share-form">
+            <label>
+              Coach email
+              <input type="email" id="shareEmail" placeholder="coach@example.com" required />
+            </label>
+            <button type="submit" class="outline-btn">Share Access</button>
+            <p class="form-feedback" id="shareFeedback"></p>
+          </form>
+        </section>
+
+        <section class="glass admin-panel hidden" id="adminPanel">
+          <div>
+            <p class="eyebrow">Manage Access</p>
+            <h3>Head coach tools</h3>
+            <p class="muted">
+              Promote trusted members to coach or retire accounts that no longer need access.
+            </p>
+          </div>
+          <form class="admin-form">
+            <label>
+              Select member
+              <select id="adminUserSelect">
+                <option value="">Select account</option>
+              </select>
+            </label>
+            <div class="admin-actions">
+              <button type="button" class="outline-btn" id="promoteButton">Promote to Coach</button>
+              <button type="button" class="danger-btn" id="deleteButton">Delete Account</button>
+            </div>
+            <p class="form-feedback" id="adminFeedback"></p>
+          </form>
+        </section>
       </section>
     </main>
   </div>
