@@ -40,6 +40,13 @@ const state = {
     timeline: [],
     stats: null,
   },
+  weight: {
+    timeline: [],
+    recent: [],
+    latest: null,
+    stats: null,
+    goalCalories: null,
+  },
 };
 
 const loginForm = document.getElementById('loginForm');
@@ -158,6 +165,26 @@ const activityWeeklyDuration = document.getElementById('activityWeeklyDuration')
 const activityAvgPace = document.getElementById('activityAvgPace');
 const activityLongestRun = document.getElementById('activityLongestRun');
 const activityLongestRunLabel = document.getElementById('activityLongestRunLabel');
+
+function scrubSensitiveQueryParams() {
+  const { origin, pathname, search, hash } = window.location;
+  if (!search) return;
+  const params = new URLSearchParams(search);
+  const sensitiveKeys = ['email', 'password', 'token'];
+  let mutated = false;
+  sensitiveKeys.forEach((key) => {
+    if (params.has(key)) {
+      params.delete(key);
+      mutated = true;
+    }
+  });
+  if (!mutated) return;
+  const nextSearch = params.toString();
+  const nextUrl = `${origin}${pathname}${nextSearch ? `?${nextSearch}` : ''}${hash || ''}`;
+  window.history.replaceState({}, document.title, nextUrl);
+}
+
+scrubSensitiveQueryParams();
 const activityTrainingLoad = document.getElementById('activityTrainingLoad');
 const activityVo2max = document.getElementById('activityVo2max');
 const activitySessionsList = document.getElementById('activitySessions');
@@ -172,12 +199,35 @@ const stravaConnectButton = document.getElementById('stravaConnectButton');
 const stravaSyncButton = document.getElementById('stravaSyncButton');
 const stravaDisconnectButton = document.getElementById('stravaDisconnectButton');
 const stravaFeedback = document.getElementById('stravaFeedback');
+const weightLatestValue = document.getElementById('weightLatestValue');
+const weightLatestSecondary = document.getElementById('weightLatestSecondary');
+const weightLatestDate = document.getElementById('weightLatestDate');
+const weightAverageValue = document.getElementById('weightAverageValue');
+const weightChangeValue = document.getElementById('weightChangeValue');
+const weightCaloriesAvg = document.getElementById('weightCaloriesAvg');
+const weightCaloriesInsight = document.getElementById('weightCaloriesInsight');
+const weightLogList = document.getElementById('weightLog');
+const weightForm = document.getElementById('weightForm');
+const weightValueInput = document.getElementById('weightValue');
+const weightUnitSelect = document.getElementById('weightUnit');
+const weightDateInput = document.getElementById('weightDate');
+const weightFeedback = document.getElementById('weightFeedback');
+const weightFormHint = document.getElementById('weightFormHint');
 
 const formatNumber = (value) => Intl.NumberFormat().format(value);
 const formatDecimal = (value, fractionDigits = 1) =>
   new Intl.NumberFormat(undefined, { maximumFractionDigits: fractionDigits }).format(value);
 const formatDate = (value) =>
   new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(value));
+const formatSignedValue = (value, suffix = '') => {
+  if (!Number.isFinite(value)) return null;
+  const rounded = Math.round(value * 10) / 10;
+  if (rounded === 0) {
+    return `0${suffix}`;
+  }
+  const sign = rounded > 0 ? '+' : '-';
+  return `${sign}${formatDecimal(Math.abs(rounded))}${suffix}`;
+};
 const formatPace = (seconds) => {
   if (!Number.isFinite(seconds) || seconds <= 0) return '—';
   const mins = Math.floor(seconds / 60);
@@ -200,6 +250,8 @@ const formatDistance = (meters) => {
   }
   return `${Math.round(meters)} m`;
 };
+
+const viewingOwnProfile = () => state.user && state.viewing && state.user.id === state.viewing.id;
 const NUTRITION_METRICS = {
   calories: { key: 'calories', label: 'Calories', unit: 'kcal' },
   protein: { key: 'protein', label: 'Protein', unit: 'g' },
@@ -915,6 +967,246 @@ function renderNutritionDashboard(data = {}) {
   renderNutritionInsights(data);
   syncMacroTargetFields(data.goals);
   updateNutritionPreview();
+}
+
+function renderWeightDashboard(data = {}) {
+  const timeline = Array.isArray(data.timeline) ? data.timeline.slice() : [];
+  const recent = Array.isArray(data.recent) ? data.recent.slice() : [];
+  const latest = data.latest || (timeline.length ? timeline[timeline.length - 1] : null);
+  renderWeightSummary(latest, data.stats || null, data.goalCalories ?? null);
+  const rows = recent.length ? recent : timeline.slice(-10).reverse();
+  renderWeightLog(rows);
+  renderWeightChart(timeline, data.goalCalories ?? null);
+}
+
+function renderWeightSummary(latest, stats, goalCalories) {
+  if (weightLatestValue) {
+    weightLatestValue.textContent = Number.isFinite(latest?.weightLbs)
+      ? `${formatDecimal(latest.weightLbs)} lb`
+      : '—';
+  }
+  if (weightLatestSecondary) {
+    weightLatestSecondary.textContent = Number.isFinite(latest?.weightKg)
+      ? `${formatDecimal(latest.weightKg)} kg`
+      : '';
+  }
+  if (weightLatestDate) {
+    weightLatestDate.textContent = latest?.date
+      ? `Logged ${formatDate(latest.date)}`
+      : 'Log a weigh-in to begin';
+  }
+  if (weightAverageValue) {
+    weightAverageValue.textContent = Number.isFinite(stats?.avgWeightLbs)
+      ? `${formatDecimal(stats.avgWeightLbs)} lb`
+      : '—';
+  }
+  if (weightChangeValue) {
+    const delta = Number.isFinite(stats?.weeklyChangeLbs)
+      ? formatSignedValue(stats.weeklyChangeLbs, ' lb')
+      : null;
+    weightChangeValue.textContent = delta || '—';
+  }
+  if (weightCaloriesAvg) {
+    weightCaloriesAvg.textContent = Number.isFinite(stats?.caloriesAvg)
+      ? `${formatNumber(stats.caloriesAvg)} kcal`
+      : '—';
+  }
+  if (weightCaloriesInsight) {
+    let insight = 'Log weight regularly to align nutrition with your target.';
+    if (Number.isFinite(stats?.caloriesAvg)) {
+      const targetLabel = Number.isFinite(goalCalories)
+        ? ` vs ${formatNumber(goalCalories)} goal`
+        : '';
+      let deltaText = '';
+      if (Number.isFinite(stats?.caloriesDeltaFromGoal) && Number.isFinite(goalCalories)) {
+        const delta = stats.caloriesDeltaFromGoal;
+        const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
+        const magnitude = formatNumber(Math.abs(delta));
+        deltaText = ` (${sign}${magnitude} kcal from goal)`;
+      }
+      insight = `Avg intake ${formatNumber(stats.caloriesAvg)} kcal${targetLabel}${deltaText}`;
+    }
+    weightCaloriesInsight.textContent = insight;
+  }
+}
+
+function renderWeightLog(entries = []) {
+  if (!weightLogList) return;
+  weightLogList.innerHTML = '';
+  if (!entries.length) {
+    renderListPlaceholder(weightLogList, 'Log weight to build a trend.');
+    return;
+  }
+  const canDelete = viewingOwnProfile();
+  entries.forEach((entry, index) => {
+    const previous = entries[index + 1];
+    const delta =
+      Number.isFinite(entry?.weightLbs) && Number.isFinite(previous?.weightLbs)
+        ? entry.weightLbs - previous.weightLbs
+        : null;
+    const deltaLabel = delta === null ? 'First entry' : `${formatSignedValue(delta, ' lb')} vs prior`;
+    const caloriesLabel = Number.isFinite(entry?.calories)
+      ? `${formatNumber(entry.calories)} kcal`
+      : 'No calorie data';
+    const weightLabel = Number.isFinite(entry?.weightLbs)
+      ? `${formatDecimal(entry.weightLbs)} lb`
+      : '—';
+    const li = document.createElement('li');
+    const deleteButton =
+      canDelete && Number.isFinite(entry?.id)
+        ? `
+        <button
+          type="button"
+          class="weight-log-delete"
+          data-weight-delete="true"
+          data-weight-id="${entry.id}">
+          Delete
+        </button>`
+        : '';
+    li.innerHTML = `
+      <div>
+        <p class="weight-log-meta">${formatDate(entry.date)}</p>
+        <p class="weight-log-meta">${caloriesLabel}</p>
+      </div>
+      <div class="weight-log-actions">
+        <div class="weight-log-values">
+          <p class="weight-log-value">${weightLabel}</p>
+          <p class="weight-log-delta">${deltaLabel}</p>
+        </div>
+        ${deleteButton}
+      </div>
+    `;
+    weightLogList.appendChild(li);
+  });
+}
+
+function renderWeightChart(timeline = [], goalCalories) {
+  const canvasId = 'weightTrendChart';
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (!timeline.length) {
+    state.charts.weightTrend?.destroy();
+    state.charts.weightTrend = null;
+    showChartMessage(canvasId, 'Log weight entries to unlock trends.');
+    return;
+  }
+
+  const labels = timeline.map((entry) => formatDate(entry.date));
+  const weights = timeline.map((entry) =>
+    Number.isFinite(entry?.weightLbs) ? Math.round(entry.weightLbs * 10) / 10 : null
+  );
+  const calories = timeline.map((entry) =>
+    Number.isFinite(entry?.calories) ? Math.round(entry.calories) : null
+  );
+  const hasCalories = calories.some((value) => Number.isFinite(value));
+  const datasets = [
+    {
+      type: 'line',
+      label: 'Weight (lb)',
+      data: weights,
+      borderColor: '#ffb347',
+      backgroundColor: 'rgba(255, 179, 71, 0.2)',
+      tension: 0.35,
+      fill: false,
+      pointRadius: 0,
+      spanGaps: true,
+      yAxisID: 'weight',
+    },
+  ];
+
+  if (hasCalories) {
+    datasets.push({
+      type: 'bar',
+      label: 'Calories',
+      data: calories,
+      backgroundColor: 'rgba(95, 107, 255, 0.35)',
+      borderRadius: 6,
+      yAxisID: 'calories',
+    });
+  }
+
+  if (Number.isFinite(goalCalories)) {
+    datasets.push({
+      type: 'line',
+      label: 'Calorie goal',
+      data: Array(labels.length).fill(goalCalories),
+      borderColor: '#27d2fe',
+      borderDash: [6, 4],
+      pointRadius: 0,
+      tension: 0,
+      spanGaps: true,
+      yAxisID: 'calories',
+    });
+  }
+
+  const { canvas: activeCanvas } = hideChartMessage(canvasId) || {};
+  const ctx = (activeCanvas || canvas).getContext('2d');
+  state.charts.weightTrend?.destroy();
+  const showCaloriesAxis = hasCalories || Number.isFinite(goalCalories);
+  const scales = {
+    x: { ticks: { color: '#9bb0d6' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+    weight: {
+      type: 'linear',
+      position: 'left',
+      ticks: { color: '#ffd7a8' },
+      grid: { color: 'rgba(255,255,255,0.05)' },
+    },
+  };
+  if (showCaloriesAxis) {
+    scales.calories = {
+      type: 'linear',
+      position: 'right',
+      ticks: { color: '#9bb0d6' },
+      grid: { drawOnChartArea: false, color: 'rgba(255,255,255,0.05)' },
+    };
+  }
+  state.charts.weightTrend = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets,
+    },
+    options: {
+      plugins: { legend: { labels: { color: '#dfe6ff' } } },
+      scales,
+    },
+  });
+}
+
+function setWeightDateDefault(dateString) {
+  if (!weightDateInput) return;
+  const parsed = dateString ? new Date(dateString) : new Date();
+  const isValid = !Number.isNaN(parsed.getTime());
+  const target = isValid ? parsed : new Date();
+  weightDateInput.value = target.toISOString().slice(0, 10);
+}
+
+function updateWeightFormVisibility() {
+  if (!weightForm) return;
+  const ownsProfile = viewingOwnProfile();
+  const fields = weightForm.querySelectorAll('input, select, button');
+  fields.forEach((field) => {
+    field.disabled = !ownsProfile;
+  });
+  if (weightFormHint) {
+    weightFormHint.textContent = ownsProfile
+      ? 'Only you can log weight for your own profile.'
+      : 'Switch back to your profile to log weight.';
+  }
+  if (!ownsProfile && weightFeedback) {
+    weightFeedback.textContent = '';
+  }
+}
+
+function resetWeightState() {
+  state.weight = {
+    timeline: [],
+    recent: [],
+    latest: null,
+    stats: null,
+    goalCalories: null,
+  };
+  renderWeightDashboard(state.weight);
 }
 
 function renderAmountReference() {
@@ -1679,6 +1971,10 @@ const pageCopy = {
     title: 'Fuel & Hydration',
     subtitle: 'Macro ratios and hydration rhythm for the current block.',
   },
+  weight: {
+    title: 'Weight Intelligence',
+    subtitle: 'Log weigh-ins and compare against calorie exposure.',
+  },
   profile: {
     title: 'Profile & Security',
     subtitle: 'Update your login details and keep your account current.',
@@ -1722,6 +2018,7 @@ const LIQUID_KEYWORDS = [
   'wine',
   'flavored water',
 ];
+const POUNDS_PER_KG = 2.2046226218;
 
 const resolveRoleLabel = (role = '') => {
   const key = role?.toString().trim().toLowerCase();
@@ -2060,6 +2357,7 @@ function updateSubjectContext(subject) {
   readinessHeadline.textContent = contextParts.join(' • ');
   updateViewingChip(subject);
   updateNutritionFormVisibility();
+  updateWeightFormVisibility();
 }
 
 function updateSharePanelVisibility(user) {
@@ -2410,6 +2708,7 @@ function handleAthleteSelection(selection) {
     loadNutrition();
     loadActivity();
     loadVitals();
+    loadWeight();
     return;
   }
 
@@ -2427,6 +2726,7 @@ function handleAthleteSelection(selection) {
   loadNutrition(athlete.id);
   loadActivity(athlete.id);
   loadVitals(athlete.id);
+  loadWeight(athlete.id);
 }
 function setActivePage(targetPage = 'overview') {
   document.querySelectorAll('#sideNav [data-page]').forEach((button) => {
@@ -2455,6 +2755,12 @@ function setActivePage(targetPage = 'overview') {
   if (targetPage === 'vitals') {
     loadVitals(state.viewing?.id ?? state.user?.id);
   }
+  if (targetPage === 'weight') {
+    loadWeight(state.viewing?.id ?? state.user?.id);
+    if (!weightDateInput?.value) {
+      setWeightDateDefault();
+    }
+  }
 }
 
 function resetToAuth(message = '') {
@@ -2478,6 +2784,7 @@ function resetToAuth(message = '') {
   resetNutritionState();
   resetActivityState();
   resetVitalsState();
+  resetWeightState();
   dashboard.classList.add('hidden');
   loginPanel.classList.remove('hidden');
   setActivePage('overview');
@@ -2520,6 +2827,8 @@ function resetToAuth(message = '') {
   clearShareInputs({ disableSelect: true });
   updateNutritionFormVisibility();
   prefillProfileForm({ name: '', email: '', weight_category: '' });
+  setWeightDateDefault();
+  updateWeightFormVisibility();
   if (loginFeedback) loginFeedback.textContent = message;
   if (signupFeedback) signupFeedback.textContent = '';
 }
@@ -2966,6 +3275,14 @@ macroTargetForm?.addEventListener('submit', async (event) => {
 });
 
 nutritionInsightSelect?.addEventListener('change', () => renderNutritionInsights(state.nutrition));
+weightForm?.addEventListener('submit', handleWeightSubmit);
+weightLogList?.addEventListener('click', (event) => {
+  const target = event.target.closest('[data-weight-delete]');
+  if (!target) return;
+  const entryId = Number.parseInt(target.dataset.weightId, 10);
+  if (!Number.isFinite(entryId) || entryId <= 0) return;
+  handleWeightDelete(entryId, target);
+});
 
 forgotForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -3117,6 +3434,8 @@ async function completeAuthentication(session) {
   await loadNutrition();
   await loadActivity();
   await loadVitals();
+  await loadWeight();
+  setWeightDateDefault();
 
   loginPanel.classList.add('hidden');
   dashboard.classList.remove('hidden');
@@ -3263,7 +3582,6 @@ async function loadMetrics(subjectOverrideId) {
   renderHeartRate(metrics.heartRateZones);
   renderSleep(metrics.sleepStages);
   renderSessions(metrics.timeline);
-  renderReadinessDetails(metrics.readiness);
   renderNutritionDetails(metrics.macros, state.hydrationEntries);
   updateCharts(metrics);
 }
@@ -3427,6 +3745,55 @@ async function loadVitals(subjectOverrideId) {
   }
 }
 
+async function loadWeight(subjectOverrideId) {
+  if (!state.user || !state.token) return;
+  const targetId = subjectOverrideId ?? state.viewing?.id ?? state.user.id;
+  const isSelfView = !targetId || targetId === state.user.id;
+  const query =
+    targetId && targetId !== state.user.id ? `?athleteId=${encodeURIComponent(targetId)}` : '';
+
+  try {
+    const response = await fetch(`/api/weight${query}`, {
+      headers: {
+        Authorization: `Bearer ${state.token}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        resetToAuth('Session expired. Please log in again.');
+      } else if ((response.status === 403 || response.status === 404) && !isSelfView) {
+        handleAthleteSelection('self');
+        if (loginFeedback) {
+          loginFeedback.textContent =
+            response.status === 403
+              ? 'Access revoked for that athlete.'
+              : 'That athlete is no longer available.';
+        }
+      } else if (weightFeedback && isSelfView) {
+        weightFeedback.textContent = 'Unable to load weight data right now.';
+      }
+      return;
+    }
+
+    const payload = await response.json();
+    state.weight.timeline = Array.isArray(payload.timeline) ? payload.timeline : [];
+    state.weight.recent = Array.isArray(payload.recent) ? payload.recent : [];
+    state.weight.latest = payload.latest || null;
+    state.weight.stats = payload.stats || null;
+    const goalCalories = Number(payload.subject?.goal_calories);
+    state.weight.goalCalories = Number.isFinite(goalCalories) ? goalCalories : null;
+    renderWeightDashboard(state.weight);
+    if (isSelfView && weightFeedback) {
+      weightFeedback.textContent = '';
+    }
+  } catch (error) {
+    if (weightFeedback && isSelfView) {
+      weightFeedback.textContent = 'Unable to load weight data right now.';
+    }
+  }
+}
+
 function handleActivitySessionClick(event) {
   const target = event.target.closest('[data-session-id]');
   if (!target) return;
@@ -3531,6 +3898,94 @@ function handleStravaMessage(event) {
       stravaFeedback.textContent = 'Strava linked. Syncing latest runs...';
     }
     loadActivity(state.activity.subjectId || state.viewing?.id || state.user?.id);
+  }
+}
+
+async function handleWeightSubmit(event) {
+  if (event) {
+    event.preventDefault();
+  }
+  if (!state.token || !weightValueInput || !weightDateInput) return;
+  if (!viewingOwnProfile()) return;
+
+  const weightValue = Number(weightValueInput.value);
+  if (!Number.isFinite(weightValue) || weightValue <= 0) {
+    if (weightFeedback) {
+      weightFeedback.textContent = 'Enter your current weight.';
+    }
+    return;
+  }
+  const unit = weightUnitSelect?.value || 'lb';
+  const dateValue = weightDateInput.value || new Date().toISOString().slice(0, 10);
+  if (weightFeedback) {
+    weightFeedback.textContent = 'Saving entry...';
+  }
+
+  try {
+    const response = await fetch('/api/weight', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${state.token}`,
+      },
+      body: JSON.stringify({ weight: weightValue, unit, date: dateValue }),
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload) {
+      throw new Error(payload?.message || 'Unable to save weight entry.');
+    }
+    if (weightFeedback) {
+      weightFeedback.textContent = 'Saved.';
+    }
+    await loadWeight(state.user.id);
+    if (weightValueInput) {
+      weightValueInput.select();
+    }
+  } catch (error) {
+    if (weightFeedback) {
+      weightFeedback.textContent = error.message;
+    }
+  }
+}
+
+async function handleWeightDelete(entryId, trigger) {
+  if (!state.token || !viewingOwnProfile()) return;
+  const confirmed =
+    typeof window === 'undefined'
+      ? true
+      : window.confirm('Delete this weight entry? This cannot be undone.');
+  if (!confirmed) return;
+
+  if (trigger) {
+    trigger.disabled = true;
+  }
+  if (weightFeedback) {
+    weightFeedback.textContent = 'Removing entry...';
+  }
+
+  try {
+    const response = await fetch(`/api/weight/${entryId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${state.token}`,
+      },
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload) {
+      throw new Error(payload?.message || 'Unable to delete entry.');
+    }
+    if (weightFeedback) {
+      weightFeedback.textContent = payload.message || 'Entry deleted.';
+    }
+    await loadWeight(state.user.id);
+  } catch (error) {
+    if (weightFeedback) {
+      weightFeedback.textContent = error.message;
+    }
+  } finally {
+    if (trigger) {
+      trigger.disabled = false;
+    }
   }
 }
 
@@ -3845,7 +4300,6 @@ function renderSleep(sleepStages) {
 function updateCharts(data) {
   renderActivityChart(data.timeline);
   renderMacroChart(data.macros);
-  renderReadinessChart(data.readiness);
 }
 
 function renderActivityChart(timeline = []) {
@@ -3928,52 +4382,6 @@ function renderMacroChart(macros) {
   });
 }
 
-function renderReadinessChart(readiness = []) {
-  const canvas = document.getElementById('readinessChart');
-  if (!canvas) return;
-  if (!readiness.length) {
-    state.charts.readiness?.destroy();
-    state.charts.readiness = null;
-    showChartMessage('readinessChart', 'No readiness entries yet.');
-    return;
-  }
-  const { canvas: activeCanvas } = hideChartMessage('readinessChart') || {};
-  const ctx = (activeCanvas || canvas).getContext('2d');
-  const labels = readiness.map((entry) => formatDate(entry.date));
-  const scores = readiness.map((entry) => entry.readiness);
-
-  state.charts.readiness?.destroy();
-  state.charts.readiness = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Readiness',
-          data: scores,
-          backgroundColor: scores.map((score) =>
-            score >= 85 ? 'rgba(77, 245, 255, 0.7)' : 'rgba(169, 93, 255, 0.6)'
-          ),
-          borderRadius: 12,
-          borderSkipped: false,
-        },
-      ],
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: '#9bb0d6' }, grid: { display: false } },
-        y: {
-          ticks: { color: '#9bb0d6' },
-          suggestedMin: 60,
-          suggestedMax: 100,
-          grid: { color: 'rgba(255,255,255,0.05)' },
-        },
-      },
-    },
-  });
-}
-
 function renderSessions(timeline = []) {
   const list = document.getElementById('sessionsList');
   const summary = document.getElementById('sessionsSummary');
@@ -4024,57 +4432,6 @@ function renderSessions(timeline = []) {
         ? 'Load is balanced. Keep two intensity waves and anchor sleep before peak sessions.'
         : 'Volume is light. Layer in one longer aerobic builder plus a short strength primer.';
   }
-}
-
-function renderReadinessDetails(entries = []) {
-  const grid = document.getElementById('readinessGrid');
-  const notes = document.getElementById('readinessNotes');
-  if (!grid || !notes) return;
-
-  grid.innerHTML = '';
-  notes.innerHTML = '';
-
-  if (!entries.length) {
-    grid.innerHTML = '<p class="empty-state">No readiness trends yet.</p>';
-    notes.innerHTML = '<li class="empty-row">No readiness notes yet.</li>';
-    return;
-  }
-
-  const recent = entries.slice(-4).reverse();
-  recent.forEach((entry) => {
-    const card = document.createElement('div');
-    card.className = 'readiness-card';
-    const cue =
-      entry.readiness >= 85 ? 'Prime' : entry.readiness >= 70 ? 'Hold steady' : 'Recovery bias';
-    card.innerHTML = `
-      <p class="muted">${formatDate(entry.date)}</p>
-      <h3>${entry.readiness}%</h3>
-      <p class="trend">${cue}</p>
-    `;
-    grid.appendChild(card);
-  });
-
-  const latest = recent[0];
-  const earliest = recent[recent.length - 1];
-  const delta = latest.readiness - earliest.readiness;
-
-  const primaryNote = document.createElement('li');
-  primaryNote.textContent =
-    latest.readiness >= 85
-      ? 'Green window for quality work—stack intervals or a heavy lift.'
-      : latest.readiness >= 70
-      ? 'Solid readiness. Keep fuel and mobility on point.'
-      : 'Flagged readiness—bias easy aerobic work and prioritize sleep.';
-  notes.appendChild(primaryNote);
-
-  const trendNote = document.createElement('li');
-  trendNote.textContent =
-    delta === 0
-      ? 'Trend is flat; lean on hydration and evening routines to nudge it upward.'
-      : delta > 0
-      ? `Up ${delta} pts over the window—add load gradually to capture the upswing.`
-      : `Down ${Math.abs(delta)} pts—pull back loading until HRV normalizes.`;
-  notes.appendChild(trendNote);
 }
 
 function renderNutritionDetails(macros, hydration = []) {

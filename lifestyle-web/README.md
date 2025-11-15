@@ -86,8 +86,12 @@ The server reads environment variables from `.env` (see `.env.example`). By defa
 | `APP_ORIGIN` | Comma-separated list of allowed origins for CORS | `http://localhost:4000` |
 | `SESSION_TTL_HOURS` | Session lifetime | `12` |
 | `SESSION_SECRET` | Secret used to derive AES-256-GCM key for tokens | `msml-lifestyle-monitor` |
+| `PASSWORD_ENCRYPTION_KEY` | Secret used to derive the AES-256-GCM key that encrypts stored password digests | `msml-lifestyle-monitor-passwords` |
 | `DB_STORAGE_DIR` | Optional override for writable SQLite directory | `./database/storage` |
 | `DB_SQL_DIR` | Optional override for SQL seed directory | `./database/sql` |
+| `HEAD_COACH_SEED_PASSWORD` | Optional override for the head coach demo password | `coach123` |
+| `SEED_AVERY_PASSWORD` | Optional override for Avery's demo password | `athlete123` |
+| `SEED_LEO_PASSWORD` | Optional override for Leo's demo password | `mindful123` |
 | `STRAVA_CLIENT_ID` | OAuth client ID from https://www.strava.com/settings/api | — |
 | `STRAVA_CLIENT_SECRET` | OAuth client secret from Strava | — |
 | `STRAVA_REDIRECT_URI` | HTTPS URL that Strava should redirect back to (must end with `/api/activity/strava/callback`) | — |
@@ -101,6 +105,11 @@ These environment variables act as fallbacks for deployments that manage one sha
 3. Restart `npm run dev` if you changed any server-side environment variables. Node.js 18+ is recommended because the integration relies on the built-in `fetch` implementation.
 4. Navigate to the Activity tab and click **Connect Strava**. Authorize the Lifestyle app in the pop-up window.
 5. Once linked, use **Sync latest** whenever you want to pull Garmin/Apple Watch-equivalent metrics (distance, pace, HR, training load, splits) straight from Strava.
+
+### Password Storage
+- Passwords are converted to a SHA-256 digest and then encrypted with AES-256-GCM using the `PASSWORD_ENCRYPTION_KEY`. The resulting value (`iv:authTag:ciphertext`) is what gets persisted in SQLite.
+- Because the encryption is keyed, changing `PASSWORD_ENCRYPTION_KEY` after users exist invalidates their hashes. Rotate the key only when you plan to reset everyone’s password or replace the SQLite file.
+- The three demo accounts (below) are automatically re-encrypted at startup using the configured seed password env vars so you can override them without editing SQL.
 
 ## Demo Accounts
 | Email | Password | Role |

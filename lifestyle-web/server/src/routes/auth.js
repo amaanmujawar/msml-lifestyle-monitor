@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { createSession, destroySession, authenticate } = require('../services/session-store');
-const { hashPassword } = require('../utils/hash-password');
+const { hashPassword, verifyPassword } = require('../utils/hash-password');
 const { coerceRole } = require('../utils/role');
 
 const router = express.Router();
@@ -70,8 +70,15 @@ router.post('/', (req, res) => {
     user = fallback;
   }
 
-  if (!user || user.password_hash !== hashPassword(secret)) {
+  if (!user || !verifyPassword(secret, user.password_hash)) {
     return res.status(401).json({ message: 'Invalid credentials.' });
+  }
+
+  if (/^[a-f0-9]{64}$/i.test(user.password_hash || '')) {
+    // Upgrade legacy SHA-256 hashes the moment the credentials are confirmed.
+    const upgraded = hashPassword(secret);
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(upgraded, user.id);
+    user.password_hash = upgraded;
   }
 
   const normalizedRole = coerceRole(user.role);

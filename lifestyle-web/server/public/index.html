@@ -43,14 +43,14 @@
         <button type="button" class="nav-item" data-page="sessions" aria-pressed="false">
           Sessions
         </button>
-        <button type="button" class="nav-item" data-page="readiness" aria-pressed="false">
-          Readiness
-        </button>
         <button type="button" class="nav-item" data-page="vitals" aria-pressed="false">
           Vitals
         </button>
         <button type="button" class="nav-item" data-page="nutrition" aria-pressed="false">
           Nutrition
+        </button>
+        <button type="button" class="nav-item" data-page="weight" aria-pressed="false">
+          Weight
         </button>
         <div class="settings-block">
           <button
@@ -93,7 +93,7 @@
             <button type="button" data-auth-mode="signup">Create account</button>
           </div>
 
-          <form id="loginForm" autocomplete="on">
+          <form id="loginForm" autocomplete="on" method="post">
             <label>
               Email or username
               <input type="text" name="email" placeholder="avery.hart@example.com or avery" required />
@@ -107,7 +107,7 @@
             <button type="button" class="link-btn" id="forgotPasswordButton">Forgot password?</button>
           </form>
 
-          <form id="signupForm" class="hidden" autocomplete="on">
+          <form id="signupForm" class="hidden" autocomplete="on" method="post">
             <label>
               Full name
               <input type="text" name="name" placeholder="Jordan Castillo" required minlength="2" />
@@ -169,7 +169,7 @@
             <p class="form-feedback" id="signupFeedback"></p>
           </form>
 
-          <form id="forgotForm" class="hidden auth-subpanel">
+          <form id="forgotForm" class="hidden auth-subpanel" method="post">
             <p class="muted small-text">
               Enter your account email. We’ll send a reset link so you can choose a new password.
             </p>
@@ -185,7 +185,7 @@
             <button type="button" class="link-btn" id="openResetButton">Already have a token?</button>
           </form>
 
-          <form id="resetForm" class="hidden auth-subpanel">
+          <form id="resetForm" class="hidden auth-subpanel" method="post">
             <p class="muted small-text">
               Paste the reset token from your email and choose a new password.
             </p>
@@ -436,24 +436,6 @@
             <p class="muted" id="sessionsSummary">
               Build consistency with 3 aerobic sessions and 2 strength touches.
             </p>
-          </article>
-        </div>
-
-        <div class="subpage hidden" data-subpage="readiness">
-          <article class="glass readiness-panel">
-            <div class="card-header">
-              <p class="eyebrow">Trend Watch</p>
-              <h3>Readiness Breakdown</h3>
-            </div>
-            <div class="readiness-grid" id="readinessGrid"></div>
-          </article>
-
-          <article class="glass insight-card">
-            <div class="card-header">
-              <p class="eyebrow">Signals</p>
-              <h3>Stress ⇄ Recovery Notes</h3>
-            </div>
-            <ul id="readinessNotes" class="readiness-notes"></ul>
           </article>
         </div>
 
@@ -759,6 +741,99 @@
                 <h3>Protein • Carbs • Fats</h3>
               </div>
               <canvas id="nutritionMacroTrendChart" height="260"></canvas>
+            </article>
+          </div>
+        </div>
+
+        <div class="subpage hidden" data-subpage="weight">
+          <div class="weight-grid">
+            <article class="glass weight-summary-card">
+              <div class="card-header split">
+                <div>
+                  <p class="eyebrow">Body weight</p>
+                  <h3>Readiness signal</h3>
+                </div>
+                <div class="summary-meta">
+                  <p class="muted small-text" id="weightLatestDate">Log a weigh-in to begin</p>
+                </div>
+              </div>
+              <div class="weight-summary-values">
+                <p class="weight-primary" id="weightLatestValue">—</p>
+                <p class="muted weight-secondary" id="weightLatestSecondary"></p>
+              </div>
+              <div class="weight-stats">
+                <div>
+                  <p class="label">7-day avg</p>
+                  <p class="stat-value" id="weightAverageValue">—</p>
+                </div>
+                <div>
+                  <p class="label">Weekly change</p>
+                  <p class="stat-value" id="weightChangeValue">—</p>
+                </div>
+                <div>
+                  <p class="label">Calories avg</p>
+                  <p class="stat-value" id="weightCaloriesAvg">—</p>
+                </div>
+              </div>
+              <p class="muted small-text" id="weightCaloriesInsight">
+                Log weight regularly to align nutrition with your target.
+              </p>
+            </article>
+
+            <article class="glass chart-card weight-chart-card">
+              <div class="card-header">
+                <p class="eyebrow">Trend</p>
+                <h3>Weight vs calories</h3>
+              </div>
+              <canvas id="weightTrendChart" height="260"></canvas>
+            </article>
+          </div>
+
+          <div class="weight-grid">
+            <article class="glass weight-log-card">
+              <div class="card-header">
+                <p class="eyebrow">Recent logs</p>
+                <h3>Last 10 entries</h3>
+              </div>
+              <ul class="weight-log-list" id="weightLog" aria-live="polite"></ul>
+            </article>
+
+            <article class="glass weight-form-card">
+              <div class="card-header">
+                <p class="eyebrow">Add entry</p>
+                <h3>Log your weight</h3>
+              </div>
+              <form id="weightForm" class="weight-form">
+                <label>
+                  Weight
+                  <input
+                    type="number"
+                    id="weightValue"
+                    name="weight"
+                    step="0.1"
+                    inputmode="decimal"
+                    min="30"
+                    max="500"
+                    placeholder="180.2"
+                    required />
+                </label>
+                <label>
+                  Unit
+                  <select id="weightUnit" name="unit">
+                    <option value="lb">lb</option>
+                    <option value="kg">kg</option>
+                  </select>
+                </label>
+                <label>
+                  Date
+                  <input type="date" id="weightDate" name="date" required />
+                </label>
+                <button type="submit">Save entry</button>
+                <p class="form-feedback" id="weightFeedback"></p>
+                <p class="muted tiny-text" id="weightFormHint">
+                  Only you can log weight for your own profile.
+                </p>
+              </form>
             </article>
           </div>
         </div>

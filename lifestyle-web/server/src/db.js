@@ -3,8 +3,14 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const loadSqlStatements = require('./utils/load-sql');
 const { ROLES, coerceRole } = require('./utils/role');
+const { hashPassword } = require('./utils/hash-password');
 
 const DATA_ROOT = path.join(__dirname, '..', '..', 'database');
+const seedUserPasswords = [
+  { email: 'avery.hart@example.com', env: 'SEED_AVERY_PASSWORD', fallback: 'athlete123' },
+  { email: 'leo.singh@example.com', env: 'SEED_LEO_PASSWORD', fallback: 'mindful123' },
+  { email: 'david.cracknell@example.com', env: 'HEAD_COACH_SEED_PASSWORD', fallback: 'coach123' },
+];
 
 function resolvePath(input, fallback) {
   if (!input) return fallback;
@@ -39,9 +45,18 @@ function seedDatabase() {
   });
 
   runAll();
+  rehashSeedUserPasswords();
 }
 
 seedDatabase();
+
+function rehashSeedUserPasswords() {
+  const update = db.prepare('UPDATE users SET password_hash = ? WHERE email = ?');
+  seedUserPasswords.forEach(({ email, env, fallback }) => {
+    const password = process.env[env] || fallback;
+    update.run(hashPassword(password), email);
+  });
+}
 
 function ensureCoachAthleteLinksTable() {
   db.prepare(
@@ -125,6 +140,26 @@ function ensureNutritionEntryWeightColumns() {
 }
 
 ensureNutritionEntryWeightColumns();
+
+function ensureWeightLogsTable() {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS weight_logs (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      weight_kg REAL NOT NULL,
+      recorded_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id),
+      UNIQUE (user_id, date)
+    )`
+  ).run();
+  db.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_weight_logs_user_date
+       ON weight_logs(user_id, date)`
+  ).run();
+}
+
+ensureWeightLogsTable();
 
 function ensureUserStravaColumns() {
   const columns = db.prepare("PRAGMA table_info(users)").all();
@@ -284,7 +319,7 @@ ensureStravaTables();
 
 function ensureHeadCoachAccount() {
   const email = 'david.cracknell@example.com';
-  const passwordHash = '777a025f5ca4a20f7bafee940f2820e28e1f4bbcbd9dd774bbce883166ef7c55'; // sha256('coach123')
+  const seedPassword = process.env.HEAD_COACH_SEED_PASSWORD || 'coach123';
   const role = ROLES.HEAD_COACH;
   const avatarUrl = 'https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=200&q=80';
   const existing = db
@@ -292,6 +327,7 @@ function ensureHeadCoachAccount() {
     .get(email);
 
   if (!existing) {
+    const passwordHash = hashPassword(seedPassword);
     db.prepare(
       `INSERT INTO users (name, email, password_hash, role, avatar_url, weight_category, goal_steps, goal_calories, goal_sleep, goal_readiness)
        VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL)`

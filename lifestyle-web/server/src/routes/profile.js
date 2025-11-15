@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { authenticate, createSession } = require('../services/session-store');
-const { hashPassword } = require('../utils/hash-password');
+const { hashPassword, verifyPassword } = require('../utils/hash-password');
 const { coerceRole, ROLES } = require('../utils/role');
 
 const router = express.Router();
@@ -57,7 +57,7 @@ router.put('/', (req, res) => {
     )
     .get(req.user.id);
 
-  if (!user || user.password_hash !== hashPassword(current)) {
+  if (!user || !verifyPassword(current, user.password_hash)) {
     return res.status(401).json({ message: 'Current password is incorrect.' });
   }
 
@@ -99,6 +99,10 @@ router.put('/', (req, res) => {
       return res.status(400).json({ message: 'Weight category must be 40 characters or fewer.' });
     }
     updates.weight_category = trimmedWeightCategory || null;
+  }
+
+  if (/^[a-f0-9]{64}$/i.test(user.password_hash || '')) {
+    updates.password_hash = hashPassword(current);
   }
 
   if (newPassword) {

@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS activity_splits;
 DROP TABLE IF EXISTS activity_sessions;
 DROP TABLE IF EXISTS strava_oauth_states;
 DROP TABLE IF EXISTS strava_connections;
+DROP TABLE IF EXISTS weight_logs;
 DROP TABLE IF EXISTS nutrition_entries;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS coach_athlete_links;
@@ -40,9 +41,9 @@ CREATE TABLE coach_athlete_links (
 
 INSERT INTO users (id, name, email, password_hash, role, avatar_url, weight_category, goal_steps, goal_calories, goal_sleep, goal_readiness, strava_client_id, strava_client_secret, strava_redirect_uri)
 VALUES
-  (1, 'Avery Hart', 'avery.hart@example.com', '8f927203b5777f8b90cdfc41eb9f24593959e5057283b1856567ff3f6cd93092', 'Coach', 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80', 'Welterweight', 13000, 2500, 7.7, 88, NULL, NULL, NULL),
-  (2, 'Leo Singh', 'leo.singh@example.com', 'd433f9c9a6da4fa32df977cf8f9ea2a355f66516ff30f31d2530f93030c6aa90', 'Athlete', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80', 'Middleweight', 10000, 2200, 8.2, 82, NULL, NULL, NULL),
-  (3, 'David Cracknell', 'david.cracknell@example.com', '777a025f5ca4a20f7bafee940f2820e28e1f4bbcbd9dd774bbce883166ef7c55', 'Head Coach', 'https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=200&q=80', 'Heavyweight', NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+  (1, 'Avery Hart', 'avery.hart@example.com', '6bfde393493be6aaf98073bf:b21a8f086b5927d0096361bc7151fd50:aa34f00fa6d6f01f5bb65742fb2b432380235d28a2ce950f926633d4332580d5', 'Coach', 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80', 'Welterweight', 13000, 2500, 7.7, 88, NULL, NULL, NULL),
+  (2, 'Leo Singh', 'leo.singh@example.com', '2f3dbb35af08d1d7d64a4833:40af881e579f47d2e64e8aaffb1234f4:1aa9ea458a5997621513aa6cdfa7f67aa93cb46afb409413d44f4af27c1e42ca', 'Athlete', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80', 'Middleweight', 10000, 2200, 8.2, 82, NULL, NULL, NULL),
+  (3, 'David Cracknell', 'david.cracknell@example.com', 'ed1530c9076e9c0e07183123:f3638be4e91cff3dba2e74279668b395:c89721341529df23133a29b469ae3bec2b934a4c728fbb8ee79f573b9046ced0', 'Head Coach', 'https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=200&q=80', 'Heavyweight', NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 INSERT INTO coach_athlete_links (coach_id, athlete_id)
 VALUES
@@ -126,6 +127,16 @@ CREATE TABLE nutrition_entries (
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
+CREATE TABLE weight_logs (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  date TEXT NOT NULL,
+  weight_kg REAL NOT NULL,
+  recorded_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users (id),
+  UNIQUE (user_id, date)
+);
+
 INSERT INTO nutrition_entries (user_id, date, item_name, item_type, calories, protein_grams, carbs_grams, fats_grams, weight_amount, weight_unit, barcode) VALUES
   (2, '2025-03-16', 'Overnight oats + whey', 'Food', 420, 32, 48, 12, 320, 'g', '0489123400123'),
   (2, '2025-03-16', 'Citrus recovery drink', 'Liquid', 110, 0, 28, 0, 500, 'ml', NULL),
@@ -137,6 +148,22 @@ INSERT INTO nutrition_entries (user_id, date, item_name, item_type, calories, pr
   (1, '2025-03-16', 'Matcha latte', 'Liquid', 190, 8, 24, 6, 350, 'ml', NULL),
   (1, '2025-03-15', 'Quinoa power bowl', 'Food', 560, 34, 68, 16, 360, 'g', '0001234987650'),
   (1, '2025-03-14', 'Evening shake', 'Liquid', 220, 28, 18, 4, 400, 'ml', NULL);
+
+INSERT INTO weight_logs (user_id, date, weight_kg) VALUES
+  (1, '2025-03-10', 83.5),
+  (1, '2025-03-11', 83.2),
+  (1, '2025-03-12', 83.1),
+  (1, '2025-03-13', 82.9),
+  (1, '2025-03-14', 82.7),
+  (1, '2025-03-15', 82.8),
+  (1, '2025-03-16', 82.6),
+  (2, '2025-03-10', 75.4),
+  (2, '2025-03-11', 75.1),
+  (2, '2025-03-12', 75.0),
+  (2, '2025-03-13', 74.8),
+  (2, '2025-03-14', 74.7),
+  (2, '2025-03-15', 74.6),
+  (2, '2025-03-16', 74.4);
 
 CREATE TABLE hydration_logs (
   id INTEGER PRIMARY KEY,

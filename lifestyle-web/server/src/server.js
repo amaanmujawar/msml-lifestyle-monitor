@@ -18,6 +18,7 @@ const passwordRoutes = require('./routes/password');
 const nutritionRoutes = require('./routes/nutrition');
 const activityRoutes = require('./routes/activity');
 const vitalsRoutes = require('./routes/vitals');
+const weightRoutes = require('./routes/weight');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
@@ -64,6 +65,7 @@ app.use('/api/password', passwordRoutes);
 app.use('/api/nutrition', nutritionRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/vitals', vitalsRoutes);
+app.use('/api/weight', weightRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
