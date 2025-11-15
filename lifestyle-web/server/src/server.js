@@ -13,6 +13,11 @@ const metricsRoutes = require('./routes/metrics');
 const athletesRoutes = require('./routes/athletes');
 const shareRoutes = require('./routes/share');
 const adminRoutes = require('./routes/admin');
+const profileRoutes = require('./routes/profile');
+const passwordRoutes = require('./routes/password');
+const nutritionRoutes = require('./routes/nutrition');
+const activityRoutes = require('./routes/activity');
+const vitalsRoutes = require('./routes/vitals');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
@@ -54,6 +59,11 @@ app.use('/api/metrics', metricsRoutes);
 app.use('/api/athletes', athletesRoutes);
 app.use('/api/share', shareRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/password', passwordRoutes);
+app.use('/api/nutrition', nutritionRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/vitals', vitalsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

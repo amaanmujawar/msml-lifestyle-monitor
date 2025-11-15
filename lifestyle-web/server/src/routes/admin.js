@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { authenticate } = require('../services/session-store');
-const { isHeadCoach, isHeadCoach: isHeadCoachRole, isCoach } = require('../utils/role');
+const { ROLES, isHeadCoach, isHeadCoach: isHeadCoachRole, isCoach, coerceRole } = require('../utils/role');
 
 const router = express.Router();
 
@@ -38,7 +38,7 @@ router.post('/promote', (req, res) => {
     return res.status(400).json({ message: 'User is already a head coach.' });
   }
 
-  db.prepare('UPDATE users SET role = ? WHERE id = ?').run('Coach', targetId);
+  db.prepare('UPDATE users SET role = ? WHERE id = ?').run(ROLES.COACH, targetId);
   return res.json({ message: `${target.name || 'User'} is now a Coach.` });
 });
 
@@ -65,7 +65,7 @@ router.post('/demote', (req, res) => {
     return res.status(400).json({ message: 'User is not a coach.' });
   }
 
-  db.prepare('UPDATE users SET role = ? WHERE id = ?').run('Athlete', targetId);
+  db.prepare('UPDATE users SET role = ? WHERE id = ?').run(ROLES.ATHLETE, targetId);
   return res.json({ message: `${target.name || 'User'} is now an Athlete.` });
 });
 

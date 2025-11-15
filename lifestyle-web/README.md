@@ -5,17 +5,23 @@ The stack combines an Express.js backend, a lightweight SQLite data layer seeded
 
 ## Features
 - Email + password login plus inline sign-up (seeded demo accounts included). You can enter the full email, the full name, the first name, or the email handle (text before `@`) when signing in.
-- Sign-in accepts either the account email or the username, making demo logins quicker.
 - Avatar picker during sign-up so every athlete can choose an icon or drop in their own PNG/WebP link.
 - Coach leaderboard + athlete switching so trainers can review multiple shared dashboards from one login.
 - Athletes can share access with a coach by entering their email (also exposed via `/api/share`).
+- Newly created accounts start empty; cards and charts explain that telemetry hasn’t synced yet.
+- Data isolation is enforced at the API layer—only the owner, linked coaches, or head coaches can view a dashboard (`/api/athletes` + `/api/metrics`).
+- Dedicated profile screen lets users change their display name, email, or password after re-entering their current password (via `/api/profile`), with uniqueness enforced.
+- Forgot-password flow generates a reset token and logs the email link to the server console in development (via `/api/password/forgot` + `/api/password/reset`).
 - Head coaches can promote/demote members between coach and athlete roles or delete inactive accounts via the `/api/admin` endpoints.
 - Token-based auth middleware that web and mobile clients can share.
 - SQLite database seeded from `database/sql/lifestyle_metrics.sql`, keeping health, activity, and nutrition data versionable.
 - Metric aggregation endpoints powering charts and insight cards.
+- Activity Tracking page surfaces Garmin/Apple Watch-style metrics with run charts, splits, and Strava importing.
+- Athletes can store their Strava client ID/secret/redirect URL in Profile, then connect and sync their own activities without touching server config.
 - Responsive dashboard styled with gradients, glassmorphism, and Fitbit-like typography.
 - AES-256-GCM encrypted session tokens signed with `SESSION_SECRET` so both the app and web dashboard can trust the same credentials.
-- `/api/signup` seeds a baseline wellness timeline for every new account so the dashboard lights up instantly.
+- `/api/signup` auto logs the new account in so they can immediately invite coaches or start sending telemetry.
+- `/api/profile` lets authenticated users update their account details (with current-password confirmation).
 
 > Coaches gain visibility into athlete data through the `coach_athlete_links` table, which powers the ranking board and cross-account sharing.
 
@@ -39,14 +45,16 @@ lifestyle-web/
     │   └── styles.css
     └── src
         ├── routes
+        │   ├── activity.js
+        │   ├── admin.js
         │   ├── athletes.js
         │   ├── auth.js
         │   ├── metrics.js
         │   ├── share.js
-        │   ├── admin.js
         │   └── signup.js
         ├── services
-        │   └── session-store.js
+        │   ├── session-store.js
+        │   └── strava.js
         ├── utils
         │   ├── crypto.js
         │   ├── load-sql.js
@@ -80,18 +88,31 @@ The server reads environment variables from `.env` (see `.env.example`). By defa
 | `SESSION_SECRET` | Secret used to derive AES-256-GCM key for tokens | `msml-lifestyle-monitor` |
 | `DB_STORAGE_DIR` | Optional override for writable SQLite directory | `./database/storage` |
 | `DB_SQL_DIR` | Optional override for SQL seed directory | `./database/sql` |
+| `STRAVA_CLIENT_ID` | OAuth client ID from https://www.strava.com/settings/api | — |
+| `STRAVA_CLIENT_SECRET` | OAuth client secret from Strava | — |
+| `STRAVA_REDIRECT_URI` | HTTPS URL that Strava should redirect back to (must end with `/api/activity/strava/callback`) | — |
+| `STRAVA_SCOPE` | Optional scope override for Strava requests | `read,activity:read_all` |
+
+These environment variables act as fallbacks for deployments that manage one shared Strava application. Individual athletes can store their own client credentials under **Profile → Strava connection keys**.
+
+### Strava Linking
+1. Create a Strava developer application (https://www.strava.com/settings/api) and point the authorization callback URL to `https://your-domain/api/activity/strava/callback` (include the full scheme + host/port).
+2. Sign in to the Lifestyle dashboard, open **Profile → Strava connection keys**, and paste your client ID, client secret, and redirect URL. These credentials are stored privately against your account.
+3. Restart `npm run dev` if you changed any server-side environment variables. Node.js 18+ is recommended because the integration relies on the built-in `fetch` implementation.
+4. Navigate to the Activity tab and click **Connect Strava**. Authorize the Lifestyle app in the pop-up window.
+5. Once linked, use **Sync latest** whenever you want to pull Garmin/Apple Watch-equivalent metrics (distance, pace, HR, training load, splits) straight from Strava.
 
 ## Demo Accounts
 | Email | Password | Role |
 | --- | --- | --- |
-| `avery.hart@example.com` | `athlete123` | Performance Coach |
-| `leo.singh@example.com` | `mindful123` | Wellness Lead |
+| `avery.hart@example.com` | `athlete123` | Coach |
+| `leo.singh@example.com` | `mindful123` | Athlete |
 | `david.cracknell@example.com` | `coach123` | Head Coach (full visibility) |
 
 > The hashed credentials live inside the SQL seed so both the website and the native app can tap into the same auth + analytics pipeline. Prefer to create your own login? Use the "Create account" tab on the landing page or POST to `/api/signup`.
 
 ## Next Steps
-- Hook the `ios/` app (or any other client) to the `/api/login`, `/api/signup`, `/api/athletes`, `/api/share`, `/api/admin`, and `/api/metrics` endpoints.
+- Hook the `ios/` app (or any other client) to the `/api/login`, `/api/signup`, `/api/athletes`, `/api/share`, `/api/admin`, `/api/profile`, `/api/password/*`, and `/api/metrics` endpoints.
 - Replace the seed SQL file with a production database or telemetry ingestion pipeline.
 - Extend the metrics route with additional tables when new sensors come online.
 - If you previously ran the project, delete `database/storage/lifestyle_monitor.db` once so the updated seed (roles, links, and head coach account) can be recreated.

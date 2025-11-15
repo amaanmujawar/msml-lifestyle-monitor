@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 const loadSqlStatements = require('./utils/load-sql');
+const { ROLES, coerceRole } = require('./utils/role');
 
 const DATA_ROOT = path.join(__dirname, '..', '..', 'database');
 
@@ -41,5 +42,296 @@ function seedDatabase() {
 }
 
 seedDatabase();
+
+function ensureCoachAthleteLinksTable() {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS coach_athlete_links (
+      id INTEGER PRIMARY KEY,
+      coach_id INTEGER NOT NULL,
+      athlete_id INTEGER NOT NULL,
+      UNIQUE (coach_id, athlete_id),
+      FOREIGN KEY (coach_id) REFERENCES users (id),
+      FOREIGN KEY (athlete_id) REFERENCES users (id)
+    )`
+  ).run();
+}
+
+ensureCoachAthleteLinksTable();
+function ensurePasswordResetTable() {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      token TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )`
+  ).run();
+  db.prepare('CREATE INDEX IF NOT EXISTS idx_password_reset_token ON password_reset_tokens(token)').run();
+}
+
+ensurePasswordResetTable();
+
+function ensureWeightCategoryColumn() {
+  const hasColumn = db
+    .prepare("PRAGMA table_info(users)")
+    .all()
+    .some((column) => column.name === 'weight_category');
+  if (!hasColumn) {
+    db.prepare('ALTER TABLE users ADD COLUMN weight_category TEXT').run();
+  }
+}
+
+ensureWeightCategoryColumn();
+
+function ensureNutritionEntriesTable() {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS nutrition_entries (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      item_name TEXT NOT NULL,
+      item_type TEXT NOT NULL DEFAULT 'Food',
+      calories INTEGER NOT NULL,
+      protein_grams INTEGER DEFAULT 0,
+      carbs_grams INTEGER DEFAULT 0,
+      fats_grams INTEGER DEFAULT 0,
+      weight_amount REAL,
+      weight_unit TEXT DEFAULT 'g',
+      barcode TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )`
+  ).run();
+  db.prepare('CREATE INDEX IF NOT EXISTS idx_nutrition_entries_user_date ON nutrition_entries(user_id, date)').run();
+}
+
+ensureNutritionEntriesTable();
+
+function ensureNutritionEntryWeightColumns() {
+  const columns = db.prepare("PRAGMA table_info(nutrition_entries)").all();
+  const hasAmount = columns.some((column) => column.name === 'weight_amount');
+  const hasUnit = columns.some((column) => column.name === 'weight_unit');
+
+  if (!hasAmount) {
+    db.prepare('ALTER TABLE nutrition_entries ADD COLUMN weight_amount REAL').run();
+  }
+  if (!hasUnit) {
+    db.prepare("ALTER TABLE nutrition_entries ADD COLUMN weight_unit TEXT DEFAULT 'g'").run();
+    db.prepare("UPDATE nutrition_entries SET weight_unit = 'g' WHERE weight_unit IS NULL OR weight_unit = ''").run();
+  }
+}
+
+ensureNutritionEntryWeightColumns();
+
+function ensureUserStravaColumns() {
+  const columns = db.prepare("PRAGMA table_info(users)").all();
+  const hasClientId = columns.some((column) => column.name === 'strava_client_id');
+  const hasClientSecret = columns.some((column) => column.name === 'strava_client_secret');
+  const hasRedirect = columns.some((column) => column.name === 'strava_redirect_uri');
+
+  if (!hasClientId) {
+    db.prepare('ALTER TABLE users ADD COLUMN strava_client_id TEXT').run();
+  }
+  if (!hasClientSecret) {
+    db.prepare('ALTER TABLE users ADD COLUMN strava_client_secret TEXT').run();
+  }
+  if (!hasRedirect) {
+    db.prepare('ALTER TABLE users ADD COLUMN strava_redirect_uri TEXT').run();
+  }
+}
+
+ensureUserStravaColumns();
+
+function ensureActivityTables() {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS activity_sessions (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      source TEXT NOT NULL DEFAULT 'manual',
+      source_id TEXT,
+      name TEXT NOT NULL,
+      sport_type TEXT NOT NULL DEFAULT 'Run',
+      start_time TEXT NOT NULL,
+      distance_m REAL,
+      moving_time_s INTEGER,
+      elapsed_time_s INTEGER,
+      average_hr REAL,
+      max_hr REAL,
+      average_pace_s REAL,
+      average_cadence REAL,
+      average_power REAL,
+      elevation_gain_m REAL,
+      calories REAL,
+      perceived_effort INTEGER,
+      vo2max_estimate REAL,
+      training_load REAL,
+      strava_activity_id INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id),
+      UNIQUE (user_id, strava_activity_id)
+    )`
+  ).run();
+  db.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_activity_sessions_user_time
+     ON activity_sessions(user_id, start_time)`
+  ).run();
+
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS activity_splits (
+      id INTEGER PRIMARY KEY,
+      session_id INTEGER NOT NULL,
+      split_index INTEGER NOT NULL,
+      distance_m REAL NOT NULL,
+      moving_time_s INTEGER NOT NULL,
+      average_pace_s REAL,
+      elevation_gain_m REAL,
+      average_hr REAL,
+      FOREIGN KEY (session_id) REFERENCES activity_sessions (id)
+    )`
+  ).run();
+  db.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_activity_splits_session
+     ON activity_splits(session_id, split_index)`
+  ).run();
+}
+
+ensureActivityTables();
+
+function ensureHealthMarkersTable() {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS health_markers (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      resting_hr INTEGER,
+      hrv_score INTEGER,
+      spo2 INTEGER,
+      stress_score INTEGER,
+      systolic_bp INTEGER,
+      diastolic_bp INTEGER,
+      glucose_mg_dl INTEGER,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )`
+  ).run();
+  db.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_health_markers_user_date
+     ON health_markers(user_id, date)`
+  ).run();
+}
+
+ensureHealthMarkersTable();
+
+function ensureStravaTables() {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS strava_connections (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER UNIQUE NOT NULL,
+      athlete_id INTEGER,
+      athlete_name TEXT,
+      client_id TEXT,
+      client_secret TEXT,
+      redirect_uri TEXT,
+      access_token TEXT,
+      refresh_token TEXT,
+      expires_at INTEGER,
+      scope TEXT,
+      last_sync TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )`
+  ).run();
+  db.prepare(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_strava_connections_user
+     ON strava_connections(user_id)`
+  ).run();
+
+  const columns = db.prepare("PRAGMA table_info(strava_connections)").all();
+  const hasClientId = columns.some((column) => column.name === 'client_id');
+  const hasClientSecret = columns.some((column) => column.name === 'client_secret');
+  const hasRedirect = columns.some((column) => column.name === 'redirect_uri');
+
+  if (!hasClientId) {
+    db.prepare('ALTER TABLE strava_connections ADD COLUMN client_id TEXT').run();
+  }
+  if (!hasClientSecret) {
+    db.prepare('ALTER TABLE strava_connections ADD COLUMN client_secret TEXT').run();
+  }
+  if (!hasRedirect) {
+    db.prepare('ALTER TABLE strava_connections ADD COLUMN redirect_uri TEXT').run();
+  }
+
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS strava_oauth_states (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      state TEXT NOT NULL UNIQUE,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      expires_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )`
+  ).run();
+  db.prepare(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_strava_oauth_state
+     ON strava_oauth_states(state)`
+  ).run();
+}
+
+ensureStravaTables();
+
+function ensureHeadCoachAccount() {
+  const email = 'david.cracknell@example.com';
+  const passwordHash = '777a025f5ca4a20f7bafee940f2820e28e1f4bbcbd9dd774bbce883166ef7c55'; // sha256('coach123')
+  const role = ROLES.HEAD_COACH;
+  const avatarUrl = 'https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=200&q=80';
+  const existing = db
+    .prepare('SELECT id, role, weight_category FROM users WHERE email = ?')
+    .get(email);
+
+  if (!existing) {
+    db.prepare(
+      `INSERT INTO users (name, email, password_hash, role, avatar_url, weight_category, goal_steps, goal_calories, goal_sleep, goal_readiness)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL)`
+    ).run('David Cracknell', email, passwordHash, role, avatarUrl, 'Heavyweight');
+    return;
+  }
+
+  const updates = [];
+  const params = [];
+  if (coerceRole(existing.role) !== role) {
+    updates.push('role = ?');
+    params.push(role);
+  }
+  if (!existing.weight_category) {
+    updates.push('weight_category = ?');
+    params.push('Heavyweight');
+  }
+  if (updates.length) {
+    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params, existing.id);
+  }
+}
+
+function ensureHeadCoachLinks() {
+  const users = db.prepare('SELECT id, role FROM users').all();
+  const headCoach = users.find((user) => coerceRole(user.role) === ROLES.HEAD_COACH);
+  if (!headCoach) return;
+
+  const athletes = users.filter((user) => coerceRole(user.role) === ROLES.ATHLETE);
+
+  const insertLink = db.prepare(
+    `INSERT OR IGNORE INTO coach_athlete_links (coach_id, athlete_id) VALUES (?, ?)`
+  );
+
+  athletes.forEach(({ id }) => {
+    if (id === headCoach.id) return;
+    insertLink.run(headCoach.id, id);
+  });
+}
+
+ensureHeadCoachAccount();
+ensureHeadCoachLinks();
 
 module.exports = db;

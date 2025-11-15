@@ -37,15 +37,38 @@
         <button type="button" class="nav-item active" data-page="overview" aria-pressed="true">
           Overview
         </button>
+        <button type="button" class="nav-item" data-page="activity" aria-pressed="false">
+          Activity
+        </button>
         <button type="button" class="nav-item" data-page="sessions" aria-pressed="false">
           Sessions
         </button>
         <button type="button" class="nav-item" data-page="readiness" aria-pressed="false">
           Readiness
         </button>
+        <button type="button" class="nav-item" data-page="vitals" aria-pressed="false">
+          Vitals
+        </button>
         <button type="button" class="nav-item" data-page="nutrition" aria-pressed="false">
           Nutrition
         </button>
+        <div class="settings-block">
+          <button
+            type="button"
+            class="nav-item settings-trigger"
+            id="settingsButton"
+            aria-expanded="false">
+            Settings ▾
+          </button>
+          <div class="settings-menu hidden" id="settingsMenu">
+            <button type="button" class="nav-item" data-page="profile" aria-pressed="false">
+              Profile
+            </button>
+            <button type="button" class="nav-item" data-page="sharing" aria-pressed="false">
+              Share access
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="tip-card">
@@ -81,6 +104,7 @@
             </label>
             <button type="submit">Enter Dashboard</button>
             <p class="form-feedback" id="loginFeedback"></p>
+            <button type="button" class="link-btn" id="forgotPasswordButton">Forgot password?</button>
           </form>
 
           <form id="signupForm" class="hidden" autocomplete="on">
@@ -144,6 +168,41 @@
             <button type="submit">Create Account</button>
             <p class="form-feedback" id="signupFeedback"></p>
           </form>
+
+          <form id="forgotForm" class="hidden auth-subpanel">
+            <p class="muted small-text">
+              Enter your account email. We’ll send a reset link so you can choose a new password.
+            </p>
+            <label>
+              Email
+              <input type="email" id="forgotEmail" placeholder="you@example.com" required />
+            </label>
+            <div class="auth-subpanel-actions">
+              <button type="submit" class="outline-btn">Send reset link</button>
+              <button type="button" class="link-btn" data-auth-back="login">Back to sign in</button>
+            </div>
+            <p class="form-feedback" id="forgotFeedback"></p>
+            <button type="button" class="link-btn" id="openResetButton">Already have a token?</button>
+          </form>
+
+          <form id="resetForm" class="hidden auth-subpanel">
+            <p class="muted small-text">
+              Paste the reset token from your email and choose a new password.
+            </p>
+            <label>
+              Reset token
+              <input type="text" id="resetToken" placeholder="Paste token" required />
+            </label>
+            <label>
+              New password
+              <input type="password" id="resetPassword" minlength="8" placeholder="Minimum 8 characters" required />
+            </label>
+            <div class="auth-subpanel-actions">
+              <button type="submit" class="outline-btn">Update password</button>
+              <button type="button" class="link-btn" data-auth-back="login">Back to sign in</button>
+            </div>
+            <p class="form-feedback" id="resetFeedback"></p>
+          </form>
         </div>
       </section>
 
@@ -175,7 +234,6 @@
             </label>
           </div>
           <ul class="coach-ranking" id="coachRanking"></ul>
-          <p class="form-feedback" id="adminFeedback"></p>
         </section>
 
         <div class="subpage" data-subpage="overview">
@@ -253,6 +311,114 @@
           </div>
         </div>
 
+        <div class="subpage hidden" data-subpage="activity">
+          <div class="activity-grid">
+            <article class="glass activity-summary span-2">
+              <div class="card-header split">
+                <div>
+                  <p class="eyebrow">Training Pulse</p>
+                  <h3>Activity Tracking</h3>
+                </div>
+                <p class="muted small-text">Last 7 days</p>
+              </div>
+              <div class="activity-metric-grid" id="activitySummaryGrid">
+                <div class="activity-metric">
+                  <p class="label">Weekly distance</p>
+                  <h3 id="activityWeeklyDistance">—</h3>
+                  <p class="muted small-text">km</p>
+                </div>
+                <div class="activity-metric">
+                  <p class="label">Time on feet</p>
+                  <h3 id="activityWeeklyDuration">—</h3>
+                  <p class="muted small-text">h:mm</p>
+                </div>
+                <div class="activity-metric">
+                  <p class="label">Average pace</p>
+                  <h3 id="activityAvgPace">—</h3>
+                  <p class="muted small-text">per km</p>
+                </div>
+                <div class="activity-metric">
+                  <p class="label">Longest effort</p>
+                  <h3 id="activityLongestRun">—</h3>
+                  <p class="muted small-text" id="activityLongestRunLabel">km</p>
+                </div>
+                <div class="activity-metric">
+                  <p class="label">Training load</p>
+                  <h3 id="activityTrainingLoad">—</h3>
+                  <p class="muted small-text">Strava suffer score</p>
+                </div>
+                <div class="activity-metric">
+                  <p class="label">VO₂ max trend</p>
+                  <h3 id="activityVo2max">—</h3>
+                  <p class="muted small-text">Estimated</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="glass chart-card">
+              <div class="card-header">
+                <p class="eyebrow">Mileage load</p>
+                <h3>Distance vs Duration</h3>
+              </div>
+              <canvas id="activityMileageChart" height="220"></canvas>
+            </article>
+
+            <article class="glass chart-card">
+              <div class="card-header">
+                <p class="eyebrow">Efficiency</p>
+                <h3>Pace vs Heart Rate</h3>
+              </div>
+              <canvas id="activityPaceChart" height="220"></canvas>
+            </article>
+
+            <article class="glass activity-panel span-2">
+              <div class="card-header split">
+                <div>
+                  <p class="eyebrow">Recent sessions</p>
+                  <h3>Latest activity feed</h3>
+                </div>
+                <p class="muted small-text" id="activitySessionHint">Tap a session to inspect splits.</p>
+              </div>
+              <ul class="activity-session-list" id="activitySessions"></ul>
+            </article>
+
+            <article class="glass activity-panel">
+              <div class="card-header">
+                <p class="eyebrow">Splits</p>
+                <h3 id="activitySplitTitle">Select a session</h3>
+              </div>
+              <ul class="activity-split-list" id="activitySplits"></ul>
+            </article>
+
+            <article class="glass activity-panel">
+              <div class="card-header">
+                <p class="eyebrow">Best efforts</p>
+                <h3>Coaching highlights</h3>
+              </div>
+              <ul class="activity-efforts" id="activityBestEfforts"></ul>
+            </article>
+
+            <article class="glass activity-panel" id="stravaPanel">
+              <div class="card-header split">
+                <div>
+                  <p class="eyebrow">Strava sync</p>
+                  <h3>Account link</h3>
+                </div>
+                <span class="status-chip" id="stravaStatusChip">Not connected</span>
+              </div>
+              <p class="muted small-text" id="stravaSummary">
+                Connect Strava to pull Apple Watch / Garmin-style run data directly into this dashboard.
+              </p>
+              <div class="strava-actions">
+                <button type="button" class="outline-btn secondary" id="stravaConnectButton">Connect Strava</button>
+                <button type="button" class="outline-btn secondary hidden" id="stravaSyncButton">Sync latest</button>
+                <button type="button" class="link-btn hidden" id="stravaDisconnectButton">Disconnect</button>
+              </div>
+              <p class="form-feedback" id="stravaFeedback"></p>
+            </article>
+          </div>
+        </div>
+
         <div class="subpage hidden" data-subpage="sessions">
           <article class="glass session-card">
             <div class="card-header">
@@ -291,65 +457,450 @@
           </article>
         </div>
 
-        <div class="subpage hidden" data-subpage="nutrition">
-          <article class="glass nutrition-card">
-            <div class="card-header">
-              <p class="eyebrow">Macro Focus</p>
-              <h3>Daily Fuel Mix</h3>
-            </div>
-            <div class="macro-breakdown" id="macroBreakdown"></div>
-          </article>
+        <div class="subpage hidden" data-subpage="vitals">
+          <div class="vitals-grid">
+            <article class="glass vitals-hero">
+              <div class="card-header">
+                <p class="eyebrow">Cardio Status</p>
+                <h3>Resting Heart Rate</h3>
+              </div>
+              <p class="vitals-hero-value" id="vitalsRestingHr">—</p>
+              <p class="muted" id="vitalsRestingHrNote">Awaiting vitals sync.</p>
+              <ul class="vitals-mini-grid">
+                <li>
+                  <p class="label">HRV</p>
+                  <p class="vitals-mini-value" id="vitalsHrv">—</p>
+                </li>
+                <li>
+                  <p class="label">SpO₂</p>
+                  <p class="vitals-mini-value" id="vitalsSpo2">—</p>
+                </li>
+                <li>
+                  <p class="label">Stress</p>
+                  <p class="vitals-mini-value" id="vitalsStress">—</p>
+                </li>
+              </ul>
+            </article>
 
-          <article class="glass hydration-card">
-            <div class="card-header">
-              <p class="eyebrow">Hydration</p>
-              <h3>Fluid Status</h3>
-            </div>
-            <div class="hydration-stats" id="hydrationStats"></div>
-          </article>
+            <article class="glass vitals-card">
+              <div class="card-header">
+                <p class="eyebrow">Blood Pressure</p>
+                <h3>Morning reading</h3>
+              </div>
+              <p class="vitals-value" id="vitalsBloodPressure">—</p>
+              <p class="muted small-text" id="vitalsBloodPressureNote">
+                Add a cuff reading to populate blood pressure insights.
+              </p>
+            </article>
+
+            <article class="glass vitals-card">
+              <div class="card-header">
+                <p class="eyebrow">Glucose</p>
+                <h3>Average</h3>
+              </div>
+              <p class="vitals-value" id="vitalsGlucose">—</p>
+              <p class="muted small-text" id="vitalsGlucoseNote">
+                Sync a glucose reading to view trends.
+              </p>
+            </article>
+
+            <article class="glass chart-card vitals-chart-card">
+              <div class="card-header split">
+                <div>
+                  <p class="eyebrow">14-day signal</p>
+                  <h3>Vitals Trend</h3>
+                </div>
+                <div class="vitals-legend">
+                  <span><span class="legend-dot hr"></span>Resting HR</span>
+                  <span><span class="legend-dot glucose"></span>Glucose</span>
+                  <span><span class="legend-dot bp"></span>Systolic BP</span>
+                </div>
+              </div>
+              <canvas id="vitalsTrendChart" height="220"></canvas>
+            </article>
+
+            <article class="glass vitals-history-card">
+              <div class="card-header">
+                <p class="eyebrow">Recent checkpoints</p>
+                <h3>Vitals Log</h3>
+              </div>
+              <ul class="vitals-history" id="vitalsHistory"></ul>
+              <p class="form-feedback" id="vitalsFeedback"></p>
+            </article>
+          </div>
         </div>
 
-        <section class="glass share-panel hidden" id="sharePanel">
-          <div>
-            <p class="eyebrow">Share Data</p>
-            <h3>Invite your coach</h3>
-            <p class="muted">
-              Grant a coach access by entering their email. You stay in control and can invite more
-              than one coach.
-            </p>
+        <div class="subpage hidden" data-subpage="nutrition">
+          <div class="nutrition-grid">
+            <article class="glass intake-summary">
+              <div class="card-header split">
+                <div>
+                  <p class="eyebrow">Daily Intake</p>
+                  <h3>Goal Progress</h3>
+                </div>
+                <div class="summary-meta">
+                  <p id="nutritionDateLabel">Today</p>
+                  <p class="muted small-text" id="nutritionEntryCount">No items logged yet</p>
+                </div>
+              </div>
+              <div class="nutrition-goal-list" id="nutritionGoalList"></div>
+              <div class="card-subsection">
+                <p class="eyebrow subtle">Macro Targets</p>
+                <div class="macro-breakdown" id="macroBreakdown"></div>
+                <button
+                  type="button"
+                  class="outline-btn secondary macro-target-toggle"
+                  id="macroTargetToggle"
+                  aria-expanded="false"
+                >
+                  Set macro targets
+                </button>
+                <form class="macro-target-form hidden" id="macroTargetForm">
+                  <div class="macro-target-grid">
+                    <label>
+                      Effective date
+                      <input type="date" id="macroTargetDate" required />
+                    </label>
+                    <label>
+                      Calories
+                      <input type="number" id="macroTargetCalories" inputmode="numeric" min="0" max="15000" placeholder="kcal" />
+                    </label>
+                    <label>
+                      Protein (g)
+                      <input type="number" id="macroTargetProtein" inputmode="numeric" min="0" max="1200" placeholder="0" />
+                    </label>
+                    <label>
+                      Carbs (g)
+                      <input type="number" id="macroTargetCarbs" inputmode="numeric" min="0" max="1500" placeholder="0" />
+                    </label>
+                    <label>
+                      Fats (g)
+                      <input type="number" id="macroTargetFats" inputmode="numeric" min="0" max="800" placeholder="0" />
+                    </label>
+                  </div>
+                  <div class="macro-target-actions">
+                    <button type="submit" class="outline-btn secondary" id="macroTargetSaveButton">Save targets</button>
+                    <button type="button" class="link-btn" id="macroTargetResetButton">Clear</button>
+                  </div>
+                  <p class="form-feedback" id="macroTargetFeedback"></p>
+                  <p class="muted tiny-text" id="macroTargetFormHint">
+                    Targets apply to the selected date.
+                  </p>
+                </form>
+              </div>
+            </article>
+
+            <article class="glass hydration-card">
+              <div class="card-header">
+                <p class="eyebrow">Hydration</p>
+                <h3>Fluid Status</h3>
+              </div>
+              <div class="hydration-stats" id="hydrationStats"></div>
+            </article>
           </div>
-          <form id="shareForm" class="share-form">
-            <label>
-              Coach email
-              <input type="email" id="shareEmail" placeholder="coach@example.com" required />
-            </label>
-            <button type="submit" class="outline-btn">Share Access</button>
-            <p class="form-feedback" id="shareFeedback"></p>
-          </form>
-        </section>
+
+          <div class="nutrition-grid">
+            <article class="glass nutrition-log-card">
+              <div class="card-header">
+                <p class="eyebrow">Today’s Log</p>
+                <h3>Food & Fluids</h3>
+              </div>
+              <div class="nutrition-log-controls">
+                <div
+                  class="chip-toggle"
+                  id="nutritionEntryFilters"
+                  role="tablist"
+                  aria-label="Filter logged intake"
+                >
+                  <button type="button" class="chip-toggle-btn active" data-filter="all" aria-pressed="true">
+                    All
+                  </button>
+                  <button type="button" class="chip-toggle-btn" data-filter="Food" aria-pressed="false">
+                    Foods
+                  </button>
+                  <button type="button" class="chip-toggle-btn" data-filter="Liquid" aria-pressed="false">
+                    Fluids
+                  </button>
+                </div>
+                <p class="muted tiny-text" id="nutritionLogSummary">No intake logged yet today.</p>
+              </div>
+              <ul class="nutrition-log-list" id="nutritionEntriesList" aria-live="polite"></ul>
+            </article>
+
+            <article class="glass nutrition-form-card">
+              <div class="card-header">
+                <p class="eyebrow">Add Intake</p>
+                <h3>Log food or drink</h3>
+              </div>
+              <p class="muted small-text form-intro">
+                Search for an item or scan a barcode, then tweak the amount/unit to see the macros update.
+              </p>
+              <form id="nutritionForm" class="nutrition-form">
+                <div class="suggestion-wrapper">
+                  <label>
+                    Item name
+                    <input type="text" id="nutritionName" placeholder="Chicken pesto pasta" autocomplete="off" aria-autocomplete="list" aria-controls="nutritionSuggestions" />
+                  </label>
+                  <ul class="suggestion-list hidden" id="nutritionSuggestions" role="listbox"></ul>
+                </div>
+                <div class="lookup-row">
+                  <div class="barcode-scan flex-1">
+                    <p class="eyebrow subtle">Barcode scan</p>
+                    <button type="button" class="outline-btn secondary" id="nutritionScanButton">
+                      Scan a barcode
+                    </button>
+                    <p class="muted tiny-text barcode-scan-status" id="nutritionScanStatus">
+                      Use your camera to auto-fill packaged food macros.
+                    </p>
+                    <div class="barcode-preview-wrapper hidden" id="nutritionScanPreviewWrapper">
+                      <video id="nutritionScanPreview" class="barcode-preview" autoplay muted playsinline></video>
+                    </div>
+                  </div>
+                  <div class="lookup-actions">
+                    <button type="button" class="outline-btn secondary" id="nutritionLookupButton">
+                      Look up nutrition
+                    </button>
+                    <p class="muted tiny-text">Pulls calories/macros from a global food database.</p>
+                  </div>
+                </div>
+                <input type="hidden" id="nutritionBarcode" />
+                <label>
+                  Category
+                  <select id="nutritionType">
+                    <option value="Food">Food</option>
+                    <option value="Liquid">Liquid</option>
+                  </select>
+                </label>
+                <div class="nutrition-preview" id="nutritionPreview">
+                  <p class="muted small-text">Enter an item to view macro details.</p>
+                </div>
+                <div class="nutrition-form-grid amount-row">
+                  <label class="flex-1 amount-input">
+                    <span class="label-row">
+                      <span id="nutritionAmountLabel">Amount (g)</span>
+                      <span class="label-hint" id="nutritionAmountReference"></span>
+                    </span>
+                    <input type="number" id="nutritionAmount" min="0" step="0.1" placeholder="grams" />
+                  </label>
+                  <label class="unit-select">
+                    Unit
+                    <select id="nutritionUnit">
+                      <option value="g">g</option>
+                      <option value="ml">ml</option>
+                    </select>
+                  </label>
+                  <label>
+                    Calories
+                    <input type="number" id="nutritionCalories" min="0" placeholder="kcal" />
+                  </label>
+                  <label>
+                    Protein (g)
+                    <input type="number" id="nutritionProtein" min="0" placeholder="0" />
+                  </label>
+                  <label>
+                    Carbs (g)
+                    <input type="number" id="nutritionCarbs" min="0" placeholder="0" />
+                  </label>
+                  <label>
+                    Fats (g)
+                    <input type="number" id="nutritionFats" min="0" placeholder="0" />
+                  </label>
+                </div>
+                <div class="nutrition-actions">
+                  <button type="submit" class="outline-btn">Log intake</button>
+                  <button type="button" class="outline-btn secondary" id="nutritionClearButton">Clear form</button>
+                </div>
+                <p class="form-feedback" id="nutritionFeedback"></p>
+                <p class="muted small-text" id="nutritionFormHint">Only you can log items for your own profile.</p>
+              </form>
+            </article>
+          </div>
+
+          <div class="nutrition-grid">
+            <article class="glass chart-card nutrition-chart-card">
+              <div class="card-header">
+                <p class="eyebrow">Last 30 days</p>
+                <h3>Calories vs Targets</h3>
+              </div>
+              <canvas id="nutritionTrendChart" height="260"></canvas>
+            </article>
+
+            <article class="glass nutrition-trend-card">
+              <div class="card-header">
+                <p class="eyebrow">Last 30 days</p>
+                <h3>Fuel Momentum</h3>
+              </div>
+              <ul class="nutrition-trend-list" id="nutritionMonthList"></ul>
+            </article>
+
+            <article class="glass nutrition-insight-card">
+              <div class="card-header">
+                <p class="eyebrow">Insight focus</p>
+                <h3>Explain my data</h3>
+              </div>
+              <label class="insight-select">
+                Metric to highlight
+                <select id="nutritionInsightSelect">
+                  <option value="calories">Calories</option>
+                  <option value="protein">Protein</option>
+                  <option value="carbs">Carbs</option>
+                  <option value="fats">Fats</option>
+                </select>
+              </label>
+              <p class="muted" id="nutritionInsightSummary">Log macros to unlock insights.</p>
+              <p class="insight-flag hidden" id="nutritionInsightFlag"></p>
+            </article>
+          </div>
+
+          <div class="nutrition-grid">
+            <article class="glass chart-card nutrition-chart-card span-2">
+              <div class="card-header">
+                <p class="eyebrow">Macro History</p>
+                <h3>Protein • Carbs • Fats</h3>
+              </div>
+              <canvas id="nutritionMacroTrendChart" height="260"></canvas>
+            </article>
+          </div>
+        </div>
 
         <section class="glass admin-panel hidden" id="adminPanel">
           <div>
             <p class="eyebrow">Manage Access</p>
-            <h3>Head coach tools</h3>
+            <h3>Head coach actions</h3>
             <p class="muted">
-              Promote trusted members to coach or retire accounts that no longer need access.
+              Promote promising athletes to coaches, demote coaches back to athletes, or retire accounts
+              that no longer need access.
             </p>
           </div>
           <form class="admin-form">
-            <label>
-              Select member
-              <select id="adminUserSelect">
-                <option value="">Select account</option>
-              </select>
-            </label>
-            <div class="admin-actions">
-              <button type="button" class="outline-btn" id="promoteButton">Promote to Coach</button>
-              <button type="button" class="danger-btn" id="deleteButton">Delete Account</button>
+            <div class="admin-flex">
+              <label class="admin-label">
+                <span>Select account</span>
+                <select id="adminUserSelect">
+                  <option value="">Choose a member</option>
+                </select>
+              </label>
+              <div class="admin-actions">
+                <button type="button" class="outline-btn" id="promoteButton">Promote</button>
+                <button type="button" class="outline-btn" id="demoteButton">Demote</button>
+                <button type="button" class="danger-btn" id="deleteButton">Delete</button>
+              </div>
             </div>
+            <p class="muted hint">
+              Every action asks for confirmation and only applies to the selected member.
+            </p>
             <p class="form-feedback" id="adminFeedback"></p>
           </form>
         </section>
+
+        <div class="subpage hidden" data-subpage="profile">
+          <article class="glass profile-card-lg">
+            <div class="card-header">
+              <p class="eyebrow">Account</p>
+              <h3>Profile & Security</h3>
+            </div>
+            <form id="profileForm" class="profile-form">
+              <div class="profile-grid">
+                <label>
+                  Display name
+                  <input type="text" id="profileName" name="name" minlength="2" required />
+                </label>
+                <label>
+                  Weight category
+                  <select id="profileWeightCategory" name="weightCategory" class="profile-select">
+                    <option value="">Unassigned</option>
+                    <option value="Flyweight">Flyweight</option>
+                    <option value="Bantamweight">Bantamweight</option>
+                    <option value="Featherweight">Featherweight</option>
+                    <option value="Lightweight">Lightweight</option>
+                    <option value="Welterweight">Welterweight</option>
+                    <option value="Middleweight">Middleweight</option>
+                    <option value="Light Heavyweight">Light Heavyweight</option>
+                    <option value="Cruiserweight">Cruiserweight</option>
+                    <option value="Heavyweight">Heavyweight</option>
+                    <option value="Super Heavyweight">Super Heavyweight</option>
+                  </select>
+                </label>
+                <label>
+                  Email
+                  <input type="email" id="profileEmail" name="email" required />
+                </label>
+                <label>
+                  New password
+                  <input type="password" id="profilePassword" name="password" minlength="8"
+                    placeholder="Leave blank to keep current password" />
+                </label>
+                <label>
+                  Current password
+                  <input type="password" id="profileCurrentPassword" name="currentPassword" required
+                    placeholder="Enter current password to save" />
+                </label>
+              </div>
+              <div class="strava-credentials">
+                <div class="card-subsection">
+                  <p class="eyebrow subtle">Strava connection keys</p>
+                  <p class="muted small-text">
+                    Paste the client ID, client secret, and redirect URL from your Strava developer
+                    account. These stay private to you and enable the Activity tab to authenticate on
+                    your behalf. Leave fields blank to disable Strava for this account.
+                  </p>
+                </div>
+                <div class="profile-grid">
+                  <label>
+                    Strava client ID
+                    <input type="text" id="profileStravaClientId" name="stravaClientId" placeholder="e.g. 12345" />
+                  </label>
+                  <label>
+                    Strava client secret
+                    <input type="password" id="profileStravaClientSecret" name="stravaClientSecret"
+                      placeholder="Paste from https://www.strava.com/settings/api" autocomplete="off" />
+                  </label>
+                  <label class="span-2">
+                    Redirect URL
+                    <input type="url" id="profileStravaRedirectUri" name="stravaRedirectUri"
+                      placeholder="https://your-domain/api/activity/strava/callback" />
+                  </label>
+                </div>
+              </div>
+              <div class="profile-actions">
+                <button type="submit" class="outline-btn">Save changes</button>
+                <p class="form-feedback" id="profileFeedback"></p>
+              </div>
+            </form>
+          </article>
+        </div>
+
+        <div class="subpage hidden" data-subpage="sharing">
+          <article class="glass share-panel" id="sharePanel">
+            <div class="card-header">
+              <p class="eyebrow">Share Data</p>
+              <h3>Invite your coach</h3>
+            </div>
+            <p class="muted">
+              Grant a coach access by entering their email. You stay in control and can invite more
+              than one coach. Only athletes can send invitations.
+            </p>
+            <p class="muted share-disabled-message hidden" id="shareDisabledMessage">
+              Sharing is disabled for coach accounts. Switch to an athlete profile to send invites.
+            </p>
+            <form id="shareForm" class="share-form">
+              <label class="coach-select">
+                Coach
+                <div class="select-wrapper">
+                  <select id="shareCoachSelect" required>
+                    <option value="">Choose a coach</option>
+                  </select>
+                </div>
+              </label>
+              <label class="flex-1">
+                Or enter email
+                <input type="email" id="shareEmail" placeholder="coach@example.com" />
+              </label>
+              <button type="submit" class="outline-btn">Share Access</button>
+              <p class="form-feedback" id="shareFeedback"></p>
+            </form>
+          </article>
+        </div>
       </section>
     </main>
   </div>

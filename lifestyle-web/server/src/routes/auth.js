@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { createSession, destroySession, authenticate } = require('../services/session-store');
 const { hashPassword } = require('../utils/hash-password');
+const { coerceRole } = require('../utils/role');
 
 const router = express.Router();
 
@@ -17,7 +18,20 @@ router.post('/', (req, res) => {
   const normalizedIdentifier = identifier.toLowerCase();
 
   const defaultSelection = `
-    SELECT id, name, email, role, avatar_url, goal_steps, goal_calories, goal_sleep, goal_readiness, password_hash
+    SELECT id,
+           name,
+           email,
+           role,
+           avatar_url,
+           weight_category,
+           goal_steps,
+           goal_calories,
+           goal_sleep,
+           goal_readiness,
+           password_hash,
+           strava_client_id,
+           strava_client_secret,
+           strava_redirect_uri
     FROM users
     WHERE %IDENTIFIER_CLAUSE%
     LIMIT 1
@@ -60,7 +74,8 @@ router.post('/', (req, res) => {
     return res.status(401).json({ message: 'Invalid credentials.' });
   }
 
-  const { password_hash: _, ...safeUser } = user; // eslint-disable-line camelcase, no-unused-vars
+  const normalizedRole = coerceRole(user.role);
+  const { password_hash: _, ...safeUser } = { ...user, role: normalizedRole }; // eslint-disable-line camelcase, no-unused-vars
   const session = createSession(safeUser);
 
   return res.json(session);
