@@ -116,6 +116,7 @@ function ensureNutritionEntriesTable() {
       weight_amount REAL,
       weight_unit TEXT DEFAULT 'g',
       barcode TEXT,
+      photo_data TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users (id)
     )`
@@ -141,6 +142,16 @@ function ensureNutritionEntryWeightColumns() {
 
 ensureNutritionEntryWeightColumns();
 
+function ensureNutritionEntryPhotoColumn() {
+  const columns = db.prepare("PRAGMA table_info(nutrition_entries)").all();
+  const hasPhoto = columns.some((column) => column.name === 'photo_data');
+  if (!hasPhoto) {
+    db.prepare('ALTER TABLE nutrition_entries ADD COLUMN photo_data TEXT').run();
+  }
+}
+
+ensureNutritionEntryPhotoColumn();
+
 function ensureWeightLogsTable() {
   db.prepare(
     `CREATE TABLE IF NOT EXISTS weight_logs (
@@ -160,6 +171,305 @@ function ensureWeightLogsTable() {
 }
 
 ensureWeightLogsTable();
+
+function ensureTrigger(name, statement) {
+  const exists = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name = ?")
+    .get(name);
+  if (!exists) {
+    db.exec(statement);
+  }
+}
+
+function ensureSyncInfrastructure() {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS sync_outbox (
+      id INTEGER PRIMARY KEY,
+      table_name TEXT NOT NULL,
+      row_id INTEGER,
+      operation TEXT NOT NULL CHECK (operation IN ('insert', 'update', 'delete')),
+      payload TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      delivered INTEGER DEFAULT 0,
+      delivered_at TEXT
+    )`
+  ).run();
+  db.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_sync_outbox_pending
+       ON sync_outbox(delivered, id)`
+  ).run();
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS sync_cursors (
+      id INTEGER PRIMARY KEY,
+      client_id TEXT NOT NULL UNIQUE,
+      last_outbox_id INTEGER DEFAULT 0,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`
+  ).run();
+
+  ensureTrigger(
+    'trg_users_insert_outbox',
+    `CREATE TRIGGER trg_users_insert_outbox
+       AFTER INSERT ON users
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'users',
+           NEW.id,
+           'insert',
+           json_object(
+             'id', NEW.id,
+             'name', NEW.name,
+             'email', NEW.email,
+             'role', NEW.role,
+             'avatar_url', NEW.avatar_url,
+             'avatar_photo', NEW.avatar_photo,
+             'weight_category', NEW.weight_category,
+             'goal_steps', NEW.goal_steps,
+             'goal_calories', NEW.goal_calories,
+             'goal_sleep', NEW.goal_sleep,
+             'goal_readiness', NEW.goal_readiness,
+             'strava_client_id', NEW.strava_client_id,
+             'strava_client_secret', NEW.strava_client_secret,
+             'strava_redirect_uri', NEW.strava_redirect_uri
+           )
+         );
+       END`
+  );
+
+  ensureTrigger(
+    'trg_users_update_outbox',
+    `CREATE TRIGGER trg_users_update_outbox
+       AFTER UPDATE ON users
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'users',
+           NEW.id,
+           'update',
+           json_object(
+             'id', NEW.id,
+             'name', NEW.name,
+             'email', NEW.email,
+             'role', NEW.role,
+             'avatar_url', NEW.avatar_url,
+             'avatar_photo', NEW.avatar_photo,
+             'weight_category', NEW.weight_category,
+             'goal_steps', NEW.goal_steps,
+             'goal_calories', NEW.goal_calories,
+             'goal_sleep', NEW.goal_sleep,
+             'goal_readiness', NEW.goal_readiness,
+             'strava_client_id', NEW.strava_client_id,
+             'strava_client_secret', NEW.strava_client_secret,
+             'strava_redirect_uri', NEW.strava_redirect_uri
+           )
+         );
+       END`
+  );
+
+  ensureTrigger(
+    'trg_users_delete_outbox',
+    `CREATE TRIGGER trg_users_delete_outbox
+       AFTER DELETE ON users
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES('users', OLD.id, 'delete', json_object('id', OLD.id));
+       END`
+  );
+
+  ensureTrigger(
+    'trg_daily_metrics_insert_outbox',
+    `CREATE TRIGGER trg_daily_metrics_insert_outbox
+       AFTER INSERT ON daily_metrics
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'daily_metrics',
+           NEW.id,
+           'insert',
+           json_object(
+             'id', NEW.id,
+             'user_id', NEW.user_id,
+             'date', NEW.date,
+             'steps', NEW.steps,
+             'calories', NEW.calories,
+             'sleep_hours', NEW.sleep_hours,
+             'readiness_score', NEW.readiness_score
+           )
+         );
+       END`
+  );
+
+  ensureTrigger(
+    'trg_daily_metrics_update_outbox',
+    `CREATE TRIGGER trg_daily_metrics_update_outbox
+       AFTER UPDATE ON daily_metrics
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'daily_metrics',
+           NEW.id,
+           'update',
+           json_object(
+             'id', NEW.id,
+             'user_id', NEW.user_id,
+             'date', NEW.date,
+             'steps', NEW.steps,
+             'calories', NEW.calories,
+             'sleep_hours', NEW.sleep_hours,
+             'readiness_score', NEW.readiness_score
+           )
+         );
+       END`
+  );
+
+  ensureTrigger(
+    'trg_daily_metrics_delete_outbox',
+    `CREATE TRIGGER trg_daily_metrics_delete_outbox
+       AFTER DELETE ON daily_metrics
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'daily_metrics',
+           OLD.id,
+           'delete',
+           json_object('id', OLD.id, 'user_id', OLD.user_id, 'date', OLD.date)
+         );
+       END`
+  );
+
+  ensureTrigger(
+    'trg_nutrition_entries_insert_outbox',
+    `CREATE TRIGGER trg_nutrition_entries_insert_outbox
+       AFTER INSERT ON nutrition_entries
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'nutrition_entries',
+           NEW.id,
+           'insert',
+           json_object(
+             'id', NEW.id,
+             'user_id', NEW.user_id,
+             'date', NEW.date,
+             'item_name', NEW.item_name,
+             'item_type', NEW.item_type,
+             'barcode', NEW.barcode,
+             'calories', NEW.calories,
+             'protein_grams', NEW.protein_grams,
+             'carbs_grams', NEW.carbs_grams,
+             'fats_grams', NEW.fats_grams,
+             'weight_amount', NEW.weight_amount,
+             'weight_unit', NEW.weight_unit,
+             'created_at', NEW.created_at
+           )
+         );
+       END`
+  );
+
+  ensureTrigger(
+    'trg_nutrition_entries_update_outbox',
+    `CREATE TRIGGER trg_nutrition_entries_update_outbox
+       AFTER UPDATE ON nutrition_entries
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'nutrition_entries',
+           NEW.id,
+           'update',
+           json_object(
+             'id', NEW.id,
+             'user_id', NEW.user_id,
+             'date', NEW.date,
+             'item_name', NEW.item_name,
+             'item_type', NEW.item_type,
+             'barcode', NEW.barcode,
+             'calories', NEW.calories,
+             'protein_grams', NEW.protein_grams,
+             'carbs_grams', NEW.carbs_grams,
+             'fats_grams', NEW.fats_grams,
+             'weight_amount', NEW.weight_amount,
+             'weight_unit', NEW.weight_unit,
+             'created_at', NEW.created_at
+           )
+         );
+       END`
+  );
+
+  ensureTrigger(
+    'trg_nutrition_entries_delete_outbox',
+    `CREATE TRIGGER trg_nutrition_entries_delete_outbox
+       AFTER DELETE ON nutrition_entries
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'nutrition_entries',
+           OLD.id,
+           'delete',
+           json_object('id', OLD.id, 'user_id', OLD.user_id, 'date', OLD.date)
+         );
+       END`
+  );
+
+  ensureTrigger(
+    'trg_weight_logs_insert_outbox',
+    `CREATE TRIGGER trg_weight_logs_insert_outbox
+       AFTER INSERT ON weight_logs
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'weight_logs',
+           NEW.id,
+           'insert',
+           json_object(
+             'id', NEW.id,
+             'user_id', NEW.user_id,
+             'date', NEW.date,
+             'weight_kg', NEW.weight_kg,
+             'recorded_at', NEW.recorded_at
+           )
+         );
+       END`
+  );
+
+  ensureTrigger(
+    'trg_weight_logs_update_outbox',
+    `CREATE TRIGGER trg_weight_logs_update_outbox
+       AFTER UPDATE ON weight_logs
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'weight_logs',
+           NEW.id,
+           'update',
+           json_object(
+             'id', NEW.id,
+             'user_id', NEW.user_id,
+             'date', NEW.date,
+             'weight_kg', NEW.weight_kg,
+             'recorded_at', NEW.recorded_at
+           )
+         );
+       END`
+  );
+
+  ensureTrigger(
+    'trg_weight_logs_delete_outbox',
+    `CREATE TRIGGER trg_weight_logs_delete_outbox
+       AFTER DELETE ON weight_logs
+       BEGIN
+         INSERT INTO sync_outbox(table_name, row_id, operation, payload)
+         VALUES(
+           'weight_logs',
+           OLD.id,
+           'delete',
+           json_object('id', OLD.id, 'user_id', OLD.user_id, 'date', OLD.date)
+         );
+       END`
+  );
+}
+
+ensureSyncInfrastructure();
 
 function ensureUserStravaColumns() {
   const columns = db.prepare("PRAGMA table_info(users)").all();
@@ -317,6 +627,16 @@ function ensureStravaTables() {
 
 ensureStravaTables();
 
+function ensureAvatarPhotoColumn() {
+  const columns = db.prepare(`PRAGMA table_info(users)`).all();
+  const hasPhotoColumn = columns.some((column) => column.name === 'avatar_photo');
+  if (!hasPhotoColumn) {
+    db.prepare(`ALTER TABLE users ADD COLUMN avatar_photo TEXT`).run();
+  }
+}
+
+ensureAvatarPhotoColumn();
+
 function ensureHeadCoachAccount() {
   const email = 'david.cracknell@example.com';
   const seedPassword = process.env.HEAD_COACH_SEED_PASSWORD || 'coach123';
@@ -329,9 +649,9 @@ function ensureHeadCoachAccount() {
   if (!existing) {
     const passwordHash = hashPassword(seedPassword);
     db.prepare(
-      `INSERT INTO users (name, email, password_hash, role, avatar_url, weight_category, goal_steps, goal_calories, goal_sleep, goal_readiness)
-       VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL)`
-    ).run('David Cracknell', email, passwordHash, role, avatarUrl, 'Heavyweight');
+      `INSERT INTO users (name, email, password_hash, role, avatar_url, avatar_photo, weight_category, goal_steps, goal_calories, goal_sleep, goal_readiness)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL)`
+    ).run('David Cracknell', email, passwordHash, role, avatarUrl, null, 'Heavyweight');
     return;
   }
 
@@ -369,5 +689,30 @@ function ensureHeadCoachLinks() {
 
 ensureHeadCoachAccount();
 ensureHeadCoachLinks();
+
+function ensureSensorStreamTables() {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS sensor_stream_samples (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      metric TEXT NOT NULL,
+      ts INTEGER NOT NULL,
+      value REAL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )`
+  ).run();
+  db.prepare(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_sensor_stream_unique
+       ON sensor_stream_samples(user_id, metric, ts)`
+  ).run();
+  db.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_sensor_stream_query
+       ON sensor_stream_samples(user_id, metric, ts DESC)`
+  ).run();
+}
+
+ensureSensorStreamTables();
 
 module.exports = db;

@@ -1,18 +1,41 @@
+-- Lifestyle monitor schema reset and seed data
+PRAGMA foreign_keys = OFF;
+
+-- Drop change-data-capture triggers to avoid dependency errors
+DROP TRIGGER IF EXISTS trg_weight_logs_delete_outbox;
+DROP TRIGGER IF EXISTS trg_weight_logs_update_outbox;
+DROP TRIGGER IF EXISTS trg_weight_logs_insert_outbox;
+DROP TRIGGER IF EXISTS trg_nutrition_entries_delete_outbox;
+DROP TRIGGER IF EXISTS trg_nutrition_entries_update_outbox;
+DROP TRIGGER IF EXISTS trg_nutrition_entries_insert_outbox;
+DROP TRIGGER IF EXISTS trg_daily_metrics_delete_outbox;
+DROP TRIGGER IF EXISTS trg_daily_metrics_update_outbox;
+DROP TRIGGER IF EXISTS trg_daily_metrics_insert_outbox;
+DROP TRIGGER IF EXISTS trg_users_delete_outbox;
+DROP TRIGGER IF EXISTS trg_users_update_outbox;
+DROP TRIGGER IF EXISTS trg_users_insert_outbox;
+
+-- Drop tables in dependency order
 DROP TABLE IF EXISTS activity_splits;
 DROP TABLE IF EXISTS activity_sessions;
-DROP TABLE IF EXISTS strava_oauth_states;
-DROP TABLE IF EXISTS strava_connections;
-DROP TABLE IF EXISTS weight_logs;
-DROP TABLE IF EXISTS nutrition_entries;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS coach_athlete_links;
-DROP TABLE IF EXISTS daily_metrics;
-DROP TABLE IF EXISTS heart_rate_zones;
-DROP TABLE IF EXISTS nutrition_macros;
 DROP TABLE IF EXISTS hydration_logs;
 DROP TABLE IF EXISTS sleep_stages;
+DROP TABLE IF EXISTS heart_rate_zones;
+DROP TABLE IF EXISTS weight_logs;
 DROP TABLE IF EXISTS health_markers;
+DROP TABLE IF EXISTS nutrition_entries;
+DROP TABLE IF EXISTS nutrition_macros;
+DROP TABLE IF EXISTS daily_metrics;
+DROP TABLE IF EXISTS strava_oauth_states;
+DROP TABLE IF EXISTS strava_connections;
+DROP TABLE IF EXISTS sync_cursors;
+DROP TABLE IF EXISTS sync_outbox;
+DROP TABLE IF EXISTS coach_athlete_links;
+DROP TABLE IF EXISTS users;
 
+PRAGMA foreign_keys = ON;
+
+-- Core Entities ------------------------------------------------------------
 CREATE TABLE users (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
@@ -20,6 +43,7 @@ CREATE TABLE users (
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL,
   avatar_url TEXT,
+  avatar_photo TEXT,
   weight_category TEXT,
   goal_steps INTEGER,
   goal_calories INTEGER,
@@ -39,17 +63,18 @@ CREATE TABLE coach_athlete_links (
   FOREIGN KEY (athlete_id) REFERENCES users (id)
 );
 
-INSERT INTO users (id, name, email, password_hash, role, avatar_url, weight_category, goal_steps, goal_calories, goal_sleep, goal_readiness, strava_client_id, strava_client_secret, strava_redirect_uri)
+INSERT INTO users (id, name, email, password_hash, role, avatar_url, avatar_photo, weight_category, goal_steps, goal_calories, goal_sleep, goal_readiness, strava_client_id, strava_client_secret, strava_redirect_uri)
 VALUES
-  (1, 'Avery Hart', 'avery.hart@example.com', '6bfde393493be6aaf98073bf:b21a8f086b5927d0096361bc7151fd50:aa34f00fa6d6f01f5bb65742fb2b432380235d28a2ce950f926633d4332580d5', 'Coach', 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80', 'Welterweight', 13000, 2500, 7.7, 88, NULL, NULL, NULL),
-  (2, 'Leo Singh', 'leo.singh@example.com', '2f3dbb35af08d1d7d64a4833:40af881e579f47d2e64e8aaffb1234f4:1aa9ea458a5997621513aa6cdfa7f67aa93cb46afb409413d44f4af27c1e42ca', 'Athlete', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80', 'Middleweight', 10000, 2200, 8.2, 82, NULL, NULL, NULL),
-  (3, 'David Cracknell', 'david.cracknell@example.com', 'ed1530c9076e9c0e07183123:f3638be4e91cff3dba2e74279668b395:c89721341529df23133a29b469ae3bec2b934a4c728fbb8ee79f573b9046ced0', 'Head Coach', 'https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=200&q=80', 'Heavyweight', NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+  (1, 'Avery Hart', 'avery.hart@example.com', '6bfde393493be6aaf98073bf:b21a8f086b5927d0096361bc7151fd50:aa34f00fa6d6f01f5bb65742fb2b432380235d28a2ce950f926633d4332580d5', 'Coach', 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80', NULL, 'Welterweight', 13000, 2500, 7.7, 88, NULL, NULL, NULL),
+  (2, 'Leo Singh', 'leo.singh@example.com', '2f3dbb35af08d1d7d64a4833:40af881e579f47d2e64e8aaffb1234f4:1aa9ea458a5997621513aa6cdfa7f67aa93cb46afb409413d44f4af27c1e42ca', 'Athlete', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80', NULL, 'Middleweight', 10000, 2200, 8.2, 82, NULL, NULL, NULL),
+  (3, 'David Cracknell', 'david.cracknell@example.com', 'ed1530c9076e9c0e07183123:f3638be4e91cff3dba2e74279668b395:c89721341529df23133a29b469ae3bec2b934a4c728fbb8ee79f573b9046ced0', 'Head Coach', 'https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=200&q=80', NULL, 'Heavyweight', NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 INSERT INTO coach_athlete_links (coach_id, athlete_id)
 VALUES
   (3, 1),
   (3, 2);
 
+-- Daily readiness + body metrics ------------------------------------------
 CREATE TABLE daily_metrics (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL,
@@ -60,6 +85,8 @@ CREATE TABLE daily_metrics (
   readiness_score INTEGER,
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
+CREATE INDEX idx_daily_metrics_user_date ON daily_metrics (user_id, date);
 
 INSERT INTO daily_metrics (user_id, date, steps, calories, sleep_hours, readiness_score) VALUES
   (1, '2025-03-10', 13240, 2460, 7.8, 90),
@@ -85,6 +112,8 @@ CREATE TABLE heart_rate_zones (
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
+CREATE INDEX idx_heart_rate_zones_user_zone ON heart_rate_zones (user_id, zone);
+
 INSERT INTO heart_rate_zones (user_id, zone, minutes) VALUES
   (1, 'Peak', 36),
   (1, 'Cardio', 62),
@@ -106,6 +135,8 @@ CREATE TABLE nutrition_macros (
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
+CREATE INDEX idx_nutrition_macros_user_date ON nutrition_macros (user_id, date);
+
 INSERT INTO nutrition_macros (user_id, date, target_calories, protein_grams, carbs_grams, fats_grams) VALUES
   (1, '2025-03-16', 2550, 160, 275, 82),
   (2, '2025-03-16', 2250, 138, 240, 74);
@@ -123,9 +154,24 @@ CREATE TABLE nutrition_entries (
   weight_amount REAL,
   weight_unit TEXT DEFAULT 'g',
   barcode TEXT,
+  photo_data TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
+CREATE INDEX idx_nutrition_entries_user_date ON nutrition_entries (user_id, date);
+
+INSERT INTO nutrition_entries (user_id, date, item_name, item_type, calories, protein_grams, carbs_grams, fats_grams, weight_amount, weight_unit, barcode, photo_data) VALUES
+  (2, '2025-03-16', 'Overnight oats + whey', 'Food', 420, 32, 48, 12, 320, 'g', '0489123400123', NULL),
+  (2, '2025-03-16', 'Citrus recovery drink', 'Liquid', 110, 0, 28, 0, 500, 'ml', NULL, NULL),
+  (2, '2025-03-16', 'Grilled salmon bowl', 'Food', 640, 48, 52, 24, 420, 'g', '0073412345000', NULL),
+  (2, '2025-03-15', 'Greek yogurt and berries', 'Food', 310, 25, 38, 6, 250, 'g', '0499123499881', NULL),
+  (2, '2025-03-15', 'Electrolyte packet', 'Liquid', 45, 0, 11, 0, 250, 'ml', NULL, NULL),
+  (2, '2025-03-14', 'Chicken pesto pasta', 'Food', 710, 46, 82, 19, 380, 'g', '0500012345678', NULL),
+  (1, '2025-03-16', 'Protein waffles', 'Food', 380, 32, 42, 10, 180, 'g', '0012345678902', NULL),
+  (1, '2025-03-16', 'Matcha latte', 'Liquid', 190, 8, 24, 6, 350, 'ml', NULL, NULL),
+  (1, '2025-03-15', 'Quinoa power bowl', 'Food', 560, 34, 68, 16, 360, 'g', '0001234987650', NULL),
+  (1, '2025-03-14', 'Evening shake', 'Liquid', 220, 28, 18, 4, 400, 'ml', NULL, NULL);
 
 CREATE TABLE weight_logs (
   id INTEGER PRIMARY KEY,
@@ -137,17 +183,7 @@ CREATE TABLE weight_logs (
   UNIQUE (user_id, date)
 );
 
-INSERT INTO nutrition_entries (user_id, date, item_name, item_type, calories, protein_grams, carbs_grams, fats_grams, weight_amount, weight_unit, barcode) VALUES
-  (2, '2025-03-16', 'Overnight oats + whey', 'Food', 420, 32, 48, 12, 320, 'g', '0489123400123'),
-  (2, '2025-03-16', 'Citrus recovery drink', 'Liquid', 110, 0, 28, 0, 500, 'ml', NULL),
-  (2, '2025-03-16', 'Grilled salmon bowl', 'Food', 640, 48, 52, 24, 420, 'g', '0073412345000'),
-  (2, '2025-03-15', 'Greek yogurt and berries', 'Food', 310, 25, 38, 6, 250, 'g', '0499123499881'),
-  (2, '2025-03-15', 'Electrolyte packet', 'Liquid', 45, 0, 11, 0, 250, 'ml', NULL),
-  (2, '2025-03-14', 'Chicken pesto pasta', 'Food', 710, 46, 82, 19, 380, 'g', '0500012345678'),
-  (1, '2025-03-16', 'Protein waffles', 'Food', 380, 32, 42, 10, 180, 'g', '0012345678902'),
-  (1, '2025-03-16', 'Matcha latte', 'Liquid', 190, 8, 24, 6, 350, 'ml', NULL),
-  (1, '2025-03-15', 'Quinoa power bowl', 'Food', 560, 34, 68, 16, 360, 'g', '0001234987650'),
-  (1, '2025-03-14', 'Evening shake', 'Liquid', 220, 28, 18, 4, 400, 'ml', NULL);
+CREATE INDEX idx_weight_logs_user_date ON weight_logs (user_id, date);
 
 INSERT INTO weight_logs (user_id, date, weight_kg) VALUES
   (1, '2025-03-10', 83.5),
@@ -173,6 +209,8 @@ CREATE TABLE hydration_logs (
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
+CREATE INDEX idx_hydration_logs_user_date ON hydration_logs (user_id, date);
+
 INSERT INTO hydration_logs (user_id, date, ounces) VALUES
   (1, '2025-03-12', 88),
   (1, '2025-03-13', 92),
@@ -195,6 +233,8 @@ CREATE TABLE sleep_stages (
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
+CREATE INDEX idx_sleep_stages_user_date ON sleep_stages (user_id, date);
+
 INSERT INTO sleep_stages (user_id, date, deep_minutes, rem_minutes, light_minutes) VALUES
   (1, '2025-03-16', 118, 142, 215),
   (2, '2025-03-16', 130, 147, 218);
@@ -213,6 +253,8 @@ CREATE TABLE health_markers (
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
+CREATE INDEX idx_health_markers_user_date ON health_markers (user_id, date);
+
 INSERT INTO health_markers (user_id, date, resting_hr, hrv_score, spo2, stress_score, systolic_bp, diastolic_bp, glucose_mg_dl) VALUES
   (1, '2025-03-11', 52, 83, 98, 31, 120, 74, 96),
   (1, '2025-03-12', 53, 82, 98, 33, 122, 76, 99),
@@ -227,6 +269,7 @@ INSERT INTO health_markers (user_id, date, resting_hr, hrv_score, spo2, stress_s
   (2, '2025-03-15', 54, 81, 99, 31, 122, 77, 95),
   (2, '2025-03-16', 54, 83, 99, 30, 121, 76, 94);
 
+-- Activity sessions --------------------------------------------------------
 CREATE TABLE activity_sessions (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL,
@@ -254,6 +297,8 @@ CREATE TABLE activity_sessions (
   UNIQUE (user_id, strava_activity_id)
 );
 
+CREATE INDEX idx_activity_sessions_user_start ON activity_sessions (user_id, start_time);
+
 INSERT INTO activity_sessions (id, user_id, source, source_id, name, sport_type, start_time, distance_m, moving_time_s, elapsed_time_s, average_hr, max_hr, average_pace_s, average_cadence, average_power, elevation_gain_m, calories, perceived_effort, vo2max_estimate, training_load, strava_activity_id)
 VALUES
   (1, 1, 'manual', NULL, 'Sunrise Aerobic', 'Run', '2025-03-14T06:20:00Z', 14200, 3600, 3680, 152, 173, 254, 178, 310, 210, 1020, 6, 56.1, 78, 880001),
@@ -275,6 +320,8 @@ CREATE TABLE activity_splits (
   average_hr REAL,
   FOREIGN KEY (session_id) REFERENCES activity_sessions (id)
 );
+
+CREATE INDEX idx_activity_splits_session_split ON activity_splits (session_id, split_index);
 
 INSERT INTO activity_splits (session_id, split_index, distance_m, moving_time_s, average_pace_s, elevation_gain_m, average_hr) VALUES
   (1, 1, 1000, 255, 255, 18, 148),
@@ -306,6 +353,7 @@ INSERT INTO activity_splits (session_id, split_index, distance_m, moving_time_s,
   (7, 3, 1000, 281, 281, 80, 172),
   (7, 4, 1000, 282, 282, 85, 168);
 
+-- OAuth + Sync infrastructure --------------------------------------------
 CREATE TABLE strava_connections (
   id INTEGER PRIMARY KEY,
   user_id INTEGER UNIQUE NOT NULL,
@@ -332,3 +380,247 @@ CREATE TABLE strava_oauth_states (
   expires_at TEXT NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
+CREATE TABLE sync_outbox (
+  id INTEGER PRIMARY KEY,
+  table_name TEXT NOT NULL,
+  row_id INTEGER,
+  operation TEXT NOT NULL CHECK (operation IN ('insert', 'update', 'delete')),
+  payload TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  delivered INTEGER DEFAULT 0,
+  delivered_at TEXT
+);
+
+CREATE INDEX idx_sync_outbox_pending ON sync_outbox (delivered, id);
+
+CREATE TABLE sync_cursors (
+  id INTEGER PRIMARY KEY,
+  client_id TEXT NOT NULL UNIQUE,
+  last_outbox_id INTEGER DEFAULT 0,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Change data capture triggers -------------------------------------------
+CREATE TRIGGER trg_users_insert_outbox
+AFTER INSERT ON users
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'users',
+    NEW.id,
+    'insert',
+    json_object(
+      'id', NEW.id,
+      'name', NEW.name,
+      'email', NEW.email,
+      'role', NEW.role,
+      'avatar_url', NEW.avatar_url,
+      'weight_category', NEW.weight_category,
+      'goal_steps', NEW.goal_steps,
+      'goal_calories', NEW.goal_calories,
+      'goal_sleep', NEW.goal_sleep,
+      'goal_readiness', NEW.goal_readiness,
+      'strava_client_id', NEW.strava_client_id,
+      'strava_client_secret', NEW.strava_client_secret,
+      'strava_redirect_uri', NEW.strava_redirect_uri
+    )
+  );
+END;
+
+CREATE TRIGGER trg_users_update_outbox
+AFTER UPDATE ON users
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'users',
+    NEW.id,
+    'update',
+    json_object(
+      'id', NEW.id,
+      'name', NEW.name,
+      'email', NEW.email,
+      'role', NEW.role,
+      'avatar_url', NEW.avatar_url,
+      'weight_category', NEW.weight_category,
+      'goal_steps', NEW.goal_steps,
+      'goal_calories', NEW.goal_calories,
+      'goal_sleep', NEW.goal_sleep,
+      'goal_readiness', NEW.goal_readiness,
+      'strava_client_id', NEW.strava_client_id,
+      'strava_client_secret', NEW.strava_client_secret,
+      'strava_redirect_uri', NEW.strava_redirect_uri
+    )
+  );
+END;
+
+CREATE TRIGGER trg_users_delete_outbox
+AFTER DELETE ON users
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES ('users', OLD.id, 'delete', json_object('id', OLD.id));
+END;
+
+CREATE TRIGGER trg_daily_metrics_insert_outbox
+AFTER INSERT ON daily_metrics
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'daily_metrics',
+    NEW.id,
+    'insert',
+    json_object(
+      'id', NEW.id,
+      'user_id', NEW.user_id,
+      'date', NEW.date,
+      'steps', NEW.steps,
+      'calories', NEW.calories,
+      'sleep_hours', NEW.sleep_hours,
+      'readiness_score', NEW.readiness_score
+    )
+  );
+END;
+
+CREATE TRIGGER trg_daily_metrics_update_outbox
+AFTER UPDATE ON daily_metrics
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'daily_metrics',
+    NEW.id,
+    'update',
+    json_object(
+      'id', NEW.id,
+      'user_id', NEW.user_id,
+      'date', NEW.date,
+      'steps', NEW.steps,
+      'calories', NEW.calories,
+      'sleep_hours', NEW.sleep_hours,
+      'readiness_score', NEW.readiness_score
+    )
+  );
+END;
+
+CREATE TRIGGER trg_daily_metrics_delete_outbox
+AFTER DELETE ON daily_metrics
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'daily_metrics',
+    OLD.id,
+    'delete',
+    json_object('id', OLD.id, 'user_id', OLD.user_id, 'date', OLD.date)
+  );
+END;
+
+CREATE TRIGGER trg_nutrition_entries_insert_outbox
+AFTER INSERT ON nutrition_entries
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'nutrition_entries',
+    NEW.id,
+    'insert',
+    json_object(
+      'id', NEW.id,
+      'user_id', NEW.user_id,
+      'date', NEW.date,
+      'item_name', NEW.item_name,
+      'item_type', NEW.item_type,
+      'barcode', NEW.barcode,
+      'calories', NEW.calories,
+      'protein_grams', NEW.protein_grams,
+      'carbs_grams', NEW.carbs_grams,
+      'fats_grams', NEW.fats_grams,
+      'weight_amount', NEW.weight_amount,
+      'weight_unit', NEW.weight_unit,
+      'created_at', NEW.created_at
+    )
+  );
+END;
+
+CREATE TRIGGER trg_nutrition_entries_update_outbox
+AFTER UPDATE ON nutrition_entries
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'nutrition_entries',
+    NEW.id,
+    'update',
+    json_object(
+      'id', NEW.id,
+      'user_id', NEW.user_id,
+      'date', NEW.date,
+      'item_name', NEW.item_name,
+      'item_type', NEW.item_type,
+      'barcode', NEW.barcode,
+      'calories', NEW.calories,
+      'protein_grams', NEW.protein_grams,
+      'carbs_grams', NEW.carbs_grams,
+      'fats_grams', NEW.fats_grams,
+      'weight_amount', NEW.weight_amount,
+      'weight_unit', NEW.weight_unit,
+      'created_at', NEW.created_at
+    )
+  );
+END;
+
+CREATE TRIGGER trg_nutrition_entries_delete_outbox
+AFTER DELETE ON nutrition_entries
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'nutrition_entries',
+    OLD.id,
+    'delete',
+    json_object('id', OLD.id, 'user_id', OLD.user_id, 'date', OLD.date)
+  );
+END;
+
+CREATE TRIGGER trg_weight_logs_insert_outbox
+AFTER INSERT ON weight_logs
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'weight_logs',
+    NEW.id,
+    'insert',
+    json_object(
+      'id', NEW.id,
+      'user_id', NEW.user_id,
+      'date', NEW.date,
+      'weight_kg', NEW.weight_kg,
+      'recorded_at', NEW.recorded_at
+    )
+  );
+END;
+
+CREATE TRIGGER trg_weight_logs_update_outbox
+AFTER UPDATE ON weight_logs
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'weight_logs',
+    NEW.id,
+    'update',
+    json_object(
+      'id', NEW.id,
+      'user_id', NEW.user_id,
+      'date', NEW.date,
+      'weight_kg', NEW.weight_kg,
+      'recorded_at', NEW.recorded_at
+    )
+  );
+END;
+
+CREATE TRIGGER trg_weight_logs_delete_outbox
+AFTER DELETE ON weight_logs
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, operation, payload)
+  VALUES (
+    'weight_logs',
+    OLD.id,
+    'delete',
+    json_object('id', OLD.id, 'user_id', OLD.user_id, 'date', OLD.date)
+  );
+END;

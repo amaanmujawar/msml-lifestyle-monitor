@@ -23,6 +23,7 @@ router.post('/', (req, res) => {
            email,
            role,
            avatar_url,
+           avatar_photo,
            weight_category,
            goal_steps,
            goal_calories,
@@ -82,7 +83,13 @@ router.post('/', (req, res) => {
   }
 
   const normalizedRole = coerceRole(user.role);
-  const { password_hash: _, ...safeUser } = { ...user, role: normalizedRole }; // eslint-disable-line camelcase, no-unused-vars
+  const {
+    password_hash: _,
+    strava_client_id, // eslint-disable-line camelcase
+    strava_client_secret, // eslint-disable-line camelcase
+    strava_redirect_uri, // eslint-disable-line camelcase
+    ...safeUser
+  } = { ...user, role: normalizedRole }; // eslint-disable-line camelcase, no-unused-vars
   const session = createSession(safeUser);
 
   return res.json(session);

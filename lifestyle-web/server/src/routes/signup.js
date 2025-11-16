@@ -53,12 +53,37 @@ function normalizeAvatarUrl(value) {
   return trimmed;
 }
 
+function normalizeAvatarPhoto(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  let trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.startsWith('data:image')) {
+    const commaIndex = trimmed.indexOf(',');
+    trimmed = commaIndex >= 0 ? trimmed.slice(commaIndex + 1) : trimmed;
+  }
+  const MAX_LENGTH = 5 * 1024 * 1024; // ~5MB base64 string
+  if (trimmed.length > MAX_LENGTH) {
+    throw new Error('Profile photo is too large. Try compressing the image.');
+  }
+  return trimmed;
+}
+
 router.post('/', (req, res) => {
-  const { name, email, password, avatar } = req.body || {};
+  const { name, email, password, avatar, avatarPhoto } = req.body || {};
   const trimmedName = typeof name === 'string' ? name.trim() : '';
   const normalizedEmail = normalizeEmail(email);
   const cleanPassword = typeof password === 'string' ? password : '';
   const avatarUrl = normalizeAvatarUrl(avatar);
+  let avatarPhotoData = null;
+  try {
+    avatarPhotoData = normalizeAvatarPhoto(avatarPhoto);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Invalid profile photo.' });
+  }
 
   if (!trimmedName || !normalizedEmail || !cleanPassword) {
     return res.status(400).json({ message: 'Name, email, and password are required.' });
@@ -80,8 +105,8 @@ router.post('/', (req, res) => {
   try {
     const passwordHash = hashPassword(cleanPassword);
     const insert = db.prepare(
-      `INSERT INTO users (name, email, password_hash, role, avatar_url, weight_category, goal_steps, goal_calories, goal_sleep, goal_readiness)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO users (name, email, password_hash, role, avatar_url, avatar_photo, weight_category, goal_steps, goal_calories, goal_sleep, goal_readiness)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     const result = insert.run(
       trimmedName,
@@ -89,6 +114,7 @@ router.post('/', (req, res) => {
       passwordHash,
       DEFAULT_ROLE,
       avatarUrl,
+      avatarPhotoData,
       DEFAULT_WEIGHT_CATEGORY,
       DEFAULT_GOALS.steps,
       DEFAULT_GOALS.calories,
@@ -102,6 +128,7 @@ router.post('/', (req, res) => {
       email: normalizedEmail,
       role: DEFAULT_ROLE,
       avatar_url: avatarUrl,
+      avatar_photo: avatarPhotoData,
       weight_category: DEFAULT_WEIGHT_CATEGORY,
       goal_steps: DEFAULT_GOALS.steps,
       goal_calories: DEFAULT_GOALS.calories,

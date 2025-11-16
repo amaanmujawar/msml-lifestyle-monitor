@@ -8,6 +8,40 @@ const router = express.Router();
 
 router.use(authenticate);
 
+function normalizeAvatarUrl(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return null;
+  }
+  return trimmed.slice(0, 600);
+}
+
+function normalizeAvatarPhoto(value) {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  let trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.startsWith('data:image')) {
+    const idx = trimmed.indexOf(',');
+    trimmed = idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
+  }
+  const MAX_LENGTH = 5 * 1024 * 1024;
+  if (trimmed.length > MAX_LENGTH) {
+    throw new Error('Profile photo is too large. Try a smaller image.');
+  }
+  return trimmed;
+}
+
 router.put('/', (req, res) => {
   const {
     name,
@@ -18,6 +52,8 @@ router.put('/', (req, res) => {
     stravaClientId,
     stravaClientSecret,
     stravaRedirectUri,
+    avatar,
+    avatarPhoto,
   } = req.body || {};
   const trimmedName = typeof name === 'string' ? name.trim() : '';
   const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -32,10 +68,6 @@ router.put('/', (req, res) => {
   const trimmedStravaRedirectUri =
     typeof stravaRedirectUri === 'string' ? stravaRedirectUri.trim() : undefined;
 
-  if (!current) {
-    return res.status(400).json({ message: 'Current password is required.' });
-  }
-
   const user = db
     .prepare(
       `SELECT id,
@@ -43,6 +75,7 @@ router.put('/', (req, res) => {
               email,
               role,
               avatar_url,
+              avatar_photo,
               weight_category,
               goal_steps,
               goal_calories,
@@ -57,8 +90,27 @@ router.put('/', (req, res) => {
     )
     .get(req.user.id);
 
-  if (!user || !verifyPassword(current, user.password_hash)) {
-    return res.status(401).json({ message: 'Current password is incorrect.' });
+  if (!user) {
+    return res.status(404).json({ message: 'Account not found.' });
+  }
+
+  const normalizedUserName = (user.name || '').trim();
+  const normalizedUserEmail = (user.email || '').trim().toLowerCase();
+  const wantsNameChange = Boolean(trimmedName) && trimmedName !== normalizedUserName;
+  const wantsEmailChange =
+    Boolean(normalizedEmail) && normalizedEmail !== normalizedUserEmail;
+  const wantsPasswordChange = Boolean(newPassword);
+  const requiresPassword = wantsNameChange || wantsEmailChange || wantsPasswordChange;
+  let passwordVerified = false;
+
+  if (requiresPassword || current) {
+    if (!current) {
+      return res.status(400).json({ message: 'Current password is required for that change.' });
+    }
+    if (!verifyPassword(current, user.password_hash)) {
+      return res.status(401).json({ message: 'Current password is incorrect.' });
+    }
+    passwordVerified = true;
   }
 
   const updates = {
@@ -69,9 +121,11 @@ router.put('/', (req, res) => {
     strava_client_id: user.strava_client_id || null,
     strava_client_secret: user.strava_client_secret || null,
     strava_redirect_uri: user.strava_redirect_uri || null,
+    avatar_url: user.avatar_url || null,
+    avatar_photo: user.avatar_photo || null,
   };
 
-  if (trimmedName) {
+  if (wantsNameChange) {
     if (trimmedName.length < 2) {
       return res.status(400).json({ message: 'Name must be at least 2 characters.' });
     }
@@ -84,7 +138,7 @@ router.put('/', (req, res) => {
     updates.name = trimmedName;
   }
 
-  if (normalizedEmail) {
+  if (wantsEmailChange) {
     const existingEmail = db
       .prepare('SELECT id FROM users WHERE LOWER(email) = ? AND id != ?')
       .get(normalizedEmail, req.user.id);
@@ -101,11 +155,16 @@ router.put('/', (req, res) => {
     updates.weight_category = trimmedWeightCategory || null;
   }
 
-  if (/^[a-f0-9]{64}$/i.test(user.password_hash || '')) {
+  if (passwordVerified && /^[a-f0-9]{64}$/i.test(user.password_hash || '')) {
     updates.password_hash = hashPassword(current);
   }
 
   if (newPassword) {
+    if (!passwordVerified) {
+      return res
+        .status(400)
+        .json({ message: 'Enter your current password to change it.' });
+    }
     if (newPassword.length < 8) {
       return res.status(400).json({ message: 'New password must be at least 8 characters.' });
     }
@@ -135,6 +194,24 @@ router.put('/', (req, res) => {
     updates.strava_redirect_uri = normalizedRedirect || null;
   }
 
+  if (avatar !== undefined) {
+    const normalizedAvatar = normalizeAvatarUrl(avatar);
+    updates.avatar_url = normalizedAvatar;
+  }
+
+  if (avatarPhoto !== undefined) {
+    let normalizedPhoto;
+    try {
+      normalizedPhoto = normalizeAvatarPhoto(avatarPhoto);
+    } catch (error) {
+      return res.status(400).json({ message: error.message || 'Invalid profile photo.' });
+    }
+    if (normalizedPhoto === undefined) {
+      normalizedPhoto = updates.avatar_photo;
+    }
+    updates.avatar_photo = normalizedPhoto;
+  }
+
   db.prepare(
     `UPDATE users
         SET name = ?,
@@ -143,7 +220,9 @@ router.put('/', (req, res) => {
             weight_category = ?,
             strava_client_id = ?,
             strava_client_secret = ?,
-            strava_redirect_uri = ?
+            strava_redirect_uri = ?,
+            avatar_url = ?,
+            avatar_photo = ?
       WHERE id = ?`
   ).run(
     updates.name,
@@ -153,6 +232,8 @@ router.put('/', (req, res) => {
     updates.strava_client_id,
     updates.strava_client_secret,
     updates.strava_redirect_uri,
+    updates.avatar_url,
+    updates.avatar_photo,
     req.user.id
   );
 
@@ -164,6 +245,8 @@ router.put('/', (req, res) => {
     strava_client_id: updates.strava_client_id,
     strava_client_secret: updates.strava_client_secret,
     strava_redirect_uri: updates.strava_redirect_uri,
+    avatar_url: updates.avatar_url,
+    avatar_photo: updates.avatar_photo,
     password_hash: undefined,
     role: coerceRole(user.role) || ROLES.ATHLETE,
   };
@@ -173,7 +256,8 @@ router.put('/', (req, res) => {
     name: refreshed.name,
     email: refreshed.email,
     role: refreshed.role,
-    avatar_url: user.avatar_url,
+    avatar_url: updates.avatar_url,
+    avatar_photo: updates.avatar_photo,
     weight_category: refreshed.weight_category,
     goal_steps: user.goal_steps,
     goal_calories: user.goal_calories,

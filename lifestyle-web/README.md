@@ -12,7 +12,7 @@ The stack combines an Express.js backend, a lightweight SQLite data layer seeded
 - Data isolation is enforced at the API layer—only the owner, linked coaches, or head coaches can view a dashboard (`/api/athletes` + `/api/metrics`).
 - Dedicated profile screen lets users change their display name, email, or password after re-entering their current password (via `/api/profile`), with uniqueness enforced.
 - Forgot-password flow generates a reset token and logs the email link to the server console in development (via `/api/password/forgot` + `/api/password/reset`).
-- Head coaches can promote/demote members between coach and athlete roles or delete inactive accounts via the `/api/admin` endpoints.
+- Head coaches can promote/demote members between coach and athlete roles, reset passwords (either to `Password` or a coach-defined temporary value), or delete inactive accounts via the `/api/admin` endpoints.
 - Token-based auth middleware that web and mobile clients can share.
 - SQLite database seeded from `database/sql/lifestyle_metrics.sql`, keeping health, activity, and nutrition data versionable.
 - Metric aggregation endpoints powering charts and insight cards.
@@ -20,6 +20,8 @@ The stack combines an Express.js backend, a lightweight SQLite data layer seeded
 - Athletes can store their Strava client ID/secret/redirect URL in Profile, then connect and sync their own activities without touching server config.
 - Responsive dashboard styled with gradients, glassmorphism, and Fitbit-like typography.
 - AES-256-GCM encrypted session tokens signed with `SESSION_SECRET` so both the app and web dashboard can trust the same credentials.
+- Optional HTTPS enforcement (`REQUIRE_HTTPS=true`) plus sanitized login responses keep Strava client credentials and other sensitive blobs stored on the server—clients only receive the minimal metadata they need.
+- `/api/streams` ingests high-frequency wearable telemetry in batches, dedupes samples server-side, and returns downsampled slices so clients only pull what they need.
 - `/api/signup` auto logs the new account in so they can immediately invite coaches or start sending telemetry.
 - `/api/profile` lets authenticated users update their account details (with current-password confirmation).
 
@@ -84,6 +86,11 @@ The server reads environment variables from `.env` (see `.env.example`). By defa
 | `PORT` | HTTP port | `4000` |
 | `HOST` | Interface the server binds to | `0.0.0.0` |
 | `APP_ORIGIN` | Comma-separated list of allowed origins for CORS | `http://localhost:4000` |
+| `API_BODY_LIMIT` | Max size for JSON/form payloads (supports avatar uploads) | `6mb` |
+| `REQUIRE_HTTPS` | When `true`, redirects HTTP GET/HEAD requests to HTTPS and rejects insecure mutations. Set this once TLS terminates in a proxy that forwards `X-Forwarded-Proto`. | `false` |
+| `STREAM_MAX_BATCH` | Max samples accepted per `/api/streams` ingestion request | `2000` |
+| `STREAM_MAX_POINTS` | Max downsampled points returned per `/api/streams` read | `600` |
+| `STREAM_DEFAULT_WINDOW_MS` | Default lookback window when `from` isn’t provided | `21600000` (6 hours) |
 | `SESSION_TTL_HOURS` | Session lifetime | `12` |
 | `SESSION_SECRET` | Secret used to derive AES-256-GCM key for tokens | `msml-lifestyle-monitor` |
 | `PASSWORD_ENCRYPTION_KEY` | Secret used to derive the AES-256-GCM key that encrypts stored password digests | `msml-lifestyle-monitor-passwords` |
@@ -98,6 +105,31 @@ The server reads environment variables from `.env` (see `.env.example`). By defa
 | `STRAVA_SCOPE` | Optional scope override for Strava requests | `read,activity:read_all` |
 
 These environment variables act as fallbacks for deployments that manage one shared Strava application. Individual athletes can store their own client credentials under **Profile → Strava connection keys**.
+
+### Metrics payload filters
+`GET /api/metrics` accepts an `include` query parameter so clients can pull only the sections they need: `summary`, `timeline`, `macros`, `heartRate`, `hydration`, `sleepStages`, and/or `readiness`.  
+Examples:
+
+- `GET /api/metrics?include=summary,readiness` returns the key cards plus readiness trend without the heavier hydration/sleep/timeline feeds.
+- `GET /api/metrics?athleteId=2&include=timeline,hydration` lets a coach fetch just the datasets they plan to graph.
+
+If `include` is omitted or invalid, the endpoint behaves exactly as before and returns every section.
+
+### Real-time telemetry ingestion
+- **Ingest:** `POST /api/streams` with a JSON body like:
+  ```json
+  {
+    "metric": "heart_rate",
+    "samples": [
+      { "timestamp": 1710612345123, "value": 142 },
+      { "timestamp": 1710612346123, "value": 143 }
+    ]
+  }
+  ```
+  The request uses the authenticated athlete’s ID, accepts up to `STREAM_MAX_BATCH` samples, and deduplicates by `(user_id, metric, timestamp)` so retrying uploads is safe.
+- **Read:** `GET /api/streams?metric=heart_rate&from=1710612000000&to=1710615600000&maxPoints=300`  
+  The server slices the requested window, downsamples to the requested (bounded) number of points, and returns `{ points, total, from, to }`. Coaches/head coaches can add `athleteId` to review linked athletes, while the mobile/watch client simply omits it and only receives its own stream.
+- **Web Bluetooth bridge:** Open `/bluetooth.html` in a Chrome/Edge tab (after signing into the dashboard) to pair directly with a BLE device. The page subscribes to notifications, parses the measurement you choose (uint8/16 or float32), and forwards buffered samples into `/api/streams` so no extra native bridge is required during prototyping.
 
 ### Strava Linking
 1. Create a Strava developer application (https://www.strava.com/settings/api) and point the authorization callback URL to `https://your-domain/api/activity/strava/callback` (include the full scheme + host/port).

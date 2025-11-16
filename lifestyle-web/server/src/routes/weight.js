@@ -12,6 +12,7 @@ const subjectStatement = db.prepare(
           email,
           role,
           avatar_url,
+          avatar_photo,
           weight_category,
           goal_steps,
           goal_calories,

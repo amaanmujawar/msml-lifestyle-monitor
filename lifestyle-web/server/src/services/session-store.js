@@ -7,6 +7,25 @@ const TTL_MS = HOURS * 60 * 60 * 1000;
 const revokedTokens = new Map();
 const CLEANUP_INTERVAL_MS = Math.max(15 * 60 * 1000, Math.min(TTL_MS, 60 * 60 * 1000)); // between 15min and 1h
 
+function sanitizeSessionPayload(user = {}) {
+  if (!user || typeof user !== 'object') {
+    return {};
+  }
+  const {
+    avatar_photo, // eslint-disable-line camelcase
+    avatarPhoto,
+    strava_client_id, // eslint-disable-line camelcase
+    stravaClientId,
+    strava_client_secret, // eslint-disable-line camelcase
+    stravaClientSecret,
+    strava_redirect_uri, // eslint-disable-line camelcase
+    stravaRedirectUri,
+    ...rest
+  } = user;
+
+  return rest;
+}
+
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
@@ -27,9 +46,10 @@ if (typeof cleanupTimer.unref === 'function') {
 
 function createSession(user) {
   const expiresAt = Date.now() + TTL_MS;
-  const token = encryptPayload({ user, expiresAt });
+  const sanitizedUser = sanitizeSessionPayload(user);
+  const token = encryptPayload({ user: sanitizedUser, expiresAt });
 
-  return { token, user };
+  return { token, user: sanitizedUser };
 }
 
 function isRevoked(token) {

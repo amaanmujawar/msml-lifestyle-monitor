@@ -97,6 +97,7 @@ const entriesByDateStatement = db.prepare(
           fats_grams       AS fats,
           weight_amount    AS weightAmount,
           weight_unit      AS weightUnit,
+          photo_data       AS photoData,
           created_at       AS createdAt
      FROM nutrition_entries
     WHERE user_id = ?
@@ -119,8 +120,8 @@ const windowTotalsStatement = db.prepare(
 
 const insertEntryStatement = db.prepare(
   `INSERT INTO nutrition_entries
-    (user_id, date, item_name, item_type, barcode, calories, protein_grams, carbs_grams, fats_grams, weight_amount, weight_unit)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    (user_id, date, item_name, item_type, barcode, calories, protein_grams, carbs_grams, fats_grams, weight_amount, weight_unit, photo_data)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 );
 
 const entryByIdStatement = db.prepare(
@@ -135,7 +136,8 @@ const entryByIdStatement = db.prepare(
           carbs_grams    AS carbs,
           fats_grams     AS fats,
           weight_amount  AS weightAmount,
-          weight_unit    AS weightUnit
+          weight_unit    AS weightUnit,
+          photo_data     AS photoData
      FROM nutrition_entries
     WHERE id = ?`
 );
@@ -153,6 +155,7 @@ const localSuggestionStatement = db.prepare(
           fats_grams    AS fats,
           weight_amount AS weightAmount,
           weight_unit   AS weightUnit,
+          photo_data    AS photoData,
           created_at    AS createdAt
      FROM nutrition_entries
     WHERE user_id = ?
@@ -1692,8 +1695,19 @@ router.post('/macros', authenticate, (req, res) => {
 
 router.post('/', authenticate, async (req, res) => {
   const userId = req.user.id;
-  const { name, type, calories, protein, carbs, fats, barcode, date, weightAmount, weightUnit } =
-    req.body || {};
+  const {
+    name,
+    type,
+    calories,
+    protein,
+    carbs,
+    fats,
+    barcode,
+    date,
+    weightAmount,
+    weightUnit,
+    photoData,
+  } = req.body || {};
 
   const trimmedName = typeof name === 'string' ? name.trim() : '';
   const trimmedBarcode = typeof barcode === 'string' ? barcode.trim() : '';
@@ -1755,6 +1769,19 @@ router.post('/', authenticate, async (req, res) => {
   const entryDate = resolveDate(date);
   const displayName = trimmedName || productData?.name || (trimmedBarcode ? `Barcode ${trimmedBarcode}` : 'Logged item');
   const storedBarcode = trimmedBarcode || productData?.barcode || null;
+  let normalizedPhotoData = null;
+  if (typeof photoData === 'string' && photoData.trim()) {
+    normalizedPhotoData = photoData.trim();
+    if (normalizedPhotoData.startsWith('data:image')) {
+      normalizedPhotoData = normalizedPhotoData.split(',').pop();
+    }
+    const MAX_BYTES = 5 * 1024 * 1024; // ~5MB base64 string length
+    if (normalizedPhotoData.length > MAX_BYTES) {
+      return res
+        .status(413)
+        .json({ message: 'Photo is too large. Try a smaller image or lower quality capture.' });
+    }
+  }
 
   insertEntryStatement.run(
     userId,
@@ -1767,7 +1794,8 @@ router.post('/', authenticate, async (req, res) => {
     payload.carbs,
     payload.fats,
     normalizedWeightAmount,
-    normalizedUnit
+    normalizedUnit,
+    normalizedPhotoData
   );
 
   return res.json({
@@ -1800,6 +1828,7 @@ router.delete('/:entryId', authenticate, (req, res) => {
       fats: entry.fats,
       weightAmount: entry.weightAmount,
       weightUnit: entry.weightUnit,
+      photoData: entry.photoData,
     },
   });
 });

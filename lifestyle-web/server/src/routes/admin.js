@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { authenticate } = require('../services/session-store');
+const { hashPassword } = require('../utils/hash-password');
 const { ROLES, isHeadCoach, isHeadCoach: isHeadCoachRole, isCoach, coerceRole } = require('../utils/role');
 
 const router = express.Router();
@@ -111,6 +112,33 @@ router.delete('/users/:id', (req, res) => {
 
   deleteUser(targetId);
   return res.status(204).send();
+});
+
+router.post('/reset-password', (req, res) => {
+  const { userId, password } = req.body || {};
+  const targetId = Number.parseInt(userId, 10);
+  if (!Number.isInteger(targetId)) {
+    return res.status(400).json({ message: 'Valid userId is required.' });
+  }
+
+  const target = db
+    .prepare('SELECT id, name FROM users WHERE id = ?')
+    .get(targetId);
+
+  if (!target) {
+    return res.status(404).json({ message: 'User not found.' });
+  }
+
+  const desiredPassword = typeof password === 'string' ? password.trim() : '';
+  if (desiredPassword && desiredPassword.length < 8) {
+    return res.status(400).json({ message: 'Temporary password must be at least 8 characters.' });
+  }
+  const tempPassword = desiredPassword || 'Password';
+  const nextHash = hashPassword(tempPassword);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(nextHash, targetId);
+  return res.json({
+    message: `${target.name || 'Account'} password reset to "${tempPassword}".`,
+  });
 });
 
 module.exports = router;

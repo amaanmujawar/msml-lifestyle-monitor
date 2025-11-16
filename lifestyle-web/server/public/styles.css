@@ -155,6 +155,26 @@ h3 {
   border-color: rgba(77, 245, 255, 0.4);
 }
 
+.nav a.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.5rem;
+  border-radius: 0.85rem;
+  text-decoration: none;
+  color: var(--muted);
+  transition: color 150ms, border-color 150ms, background 150ms;
+  border: 1px solid transparent;
+}
+
+.nav a.nav-link:hover,
+.nav a.nav-link:focus-visible {
+  color: #fff;
+  border-color: rgba(77, 245, 255, 0.35);
+  background: rgba(77, 245, 255, 0.08);
+  outline: none;
+}
+
 .settings-block {
   display: flex;
   flex-direction: column;
@@ -196,6 +216,198 @@ main {
 .muted {
   color: var(--muted);
   margin: 0;
+}
+
+.device-body {
+  background: radial-gradient(circle at top, rgba(53, 123, 255, 0.2), transparent 45%), var(--bg);
+  min-height: 100vh;
+  padding: 2rem clamp(1rem, 4vw, 3rem);
+  color: #fefefe;
+}
+
+.device-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+}
+
+.device-hero {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 20px 60px rgba(8, 19, 44, 0.6);
+}
+
+.device-hero h1 {
+  font-size: clamp(2rem, 6vw, 2.8rem);
+  margin: 0;
+}
+
+.device-hero p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.device-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.outline-link {
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.device-card {
+  background: rgba(3, 14, 32, 0.65);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.device-card h3 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.device-warning {
+  border-radius: 12px;
+  padding: 1rem;
+  background: rgba(255, 171, 92, 0.12);
+  border: 1px solid rgba(255, 171, 92, 0.4);
+  color: #ffd7b0;
+}
+
+.device-warning strong {
+  color: #fff;
+}
+
+.device-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.device-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.device-form input,
+.device-form select {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.65rem 0.85rem;
+  background: rgba(12, 25, 52, 0.6);
+  color: #fff;
+  font: inherit;
+}
+
+.device-form button {
+  border-radius: 0.85rem;
+  border: none;
+  padding: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+
+.device-form button.primary {
+  background: var(--gradient);
+  color: #fff;
+}
+
+.device-form button.secondary {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.device-form button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.device-status {
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  background: rgba(29, 78, 216, 0.15);
+  border: 1px solid rgba(93, 151, 255, 0.4);
+  color: #b5cbff;
+  font-size: 0.95rem;
+}
+
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.device-metric {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.85rem;
+}
+
+.device-metric span {
+  display: block;
+  font-size: 1.35rem;
+  margin-top: 0.35rem;
+  font-weight: 600;
+}
+
+.sample-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.9rem;
+}
+
+.sample-log li {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-decoration: none;
+  margin-bottom: 1.5rem;
+  color: var(--muted);
+  transition: color 150ms;
+}
+
+.back-link:hover,
+.back-link:focus-visible {
+  color: #fff;
 }
 
 .glass {
@@ -433,6 +645,67 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.profile-photo-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.profile-photo-frame {
+  width: 120px;
+  height: 120px;
+  border-radius: 28px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-photo-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-photo-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.profile-photo-actions {
+  flex: 1 1 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.avatar-upload-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-weight: 500;
+}
+
+.avatar-upload-label input[type='file'] {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  color: #fff;
+  background: rgba(6, 16, 35, 0.85);
+}
+
+.outline-btn.small {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.9rem;
 }
 
 .profile-grid {
@@ -1168,6 +1441,47 @@ button:hover {
 .suggestion-list .suggestion-meta {
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+.suggestion-empty {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.suggestion-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.suggestion-chip {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 120px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.suggestion-chip strong {
+  font-size: 0.85rem;
+}
+
+.suggestion-chip span {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.suggestion-chip:hover,
+.suggestion-chip:focus-visible {
+  border-color: rgba(77, 245, 255, 0.6);
+  background: rgba(77, 245, 255, 0.08);
 }
 
 .nutrition-form button {

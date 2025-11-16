@@ -26,6 +26,7 @@ const subjectStatement = db.prepare(
           email,
           role,
           avatar_url,
+          avatar_photo,
           weight_category,
           goal_steps,
           goal_calories,
@@ -287,6 +288,17 @@ function getUserStravaSettings(userId) {
   return settings || null;
 }
 
+function resolveEffectiveStravaSettings(userId) {
+  const personal = getUserStravaSettings(userId);
+  if (hasPersonalStravaConfig(personal)) {
+    return { config: personal, source: 'user' };
+  }
+  if (hasStravaConfig()) {
+    return { config: resolveConfig(), source: 'server' };
+  }
+  return { config: null, source: null };
+}
+
 function computePace(distanceMeters, movingTimeSeconds) {
   const normalizedDistance = coerceNumber(distanceMeters);
   const distanceKm = normalizedDistance ? normalizedDistance / 1000 : null;
@@ -455,19 +467,20 @@ function computeBestEfforts(sessions) {
 
 function buildStravaStatus(connection, { canManage = false, settings = null } = {}) {
   const serverEnabled = hasStravaConfig();
-  const configured = hasPersonalStravaConfig(settings);
-  const resolved = resolveConfig(configured ? settings : {});
+  const personalConfigured = hasPersonalStravaConfig(settings);
+  const effectiveConfig = resolveConfig(personalConfigured ? settings : {});
   return {
-    enabled: serverEnabled || configured,
-    configured,
+    enabled: Boolean(serverEnabled || personalConfigured),
+    configured: Boolean(serverEnabled || personalConfigured),
     connected: Boolean(connection),
     athleteId: connection?.athleteId || null,
     athleteName: connection?.athleteName || null,
     lastSync: connection?.lastSync || null,
-    scope: connection?.scope || resolved.scope || STRAVA_SCOPE,
-    redirectUri: resolved.redirectUri || null,
+    scope: connection?.scope || effectiveConfig.scope || STRAVA_SCOPE,
+    redirectUri: effectiveConfig.redirectUri || null,
     canManage,
-    requiresSetup: canManage && !configured,
+    requiresSetup: Boolean(canManage && !personalConfigured && !serverEnabled),
+    usingServerDefaults: Boolean(!personalConfigured && serverEnabled),
   };
 }
 
@@ -655,15 +668,20 @@ router.get('/', authenticate, (req, res) => {
 });
 
 router.post('/strava/connect', authenticate, (req, res) => {
-  const settings = getUserStravaSettings(req.user.id);
-  if (!hasPersonalStravaConfig(settings)) {
-    return res.status(422).json({ message: 'Add your Strava client ID, secret, and redirect URL under Profile before connecting.' });
+  const { config } = resolveEffectiveStravaSettings(req.user.id);
+  if (!config) {
+    return res
+      .status(422)
+      .json({
+        message:
+          'Add your Strava API keys under Profile or configure STRAVA_CLIENT_ID/SECRET/REDIRECT_URI on the server before connecting.',
+      });
   }
   pruneStateStatement.run(new Date().toISOString());
   const stateValue = crypto.randomBytes(24).toString('hex');
   const expiresAt = new Date(Date.now() + OAUTH_STATE_TTL_MS).toISOString();
   insertStateStatement.run(req.user.id, stateValue, expiresAt);
-  const url = buildAuthorizeUrl(stateValue, settings);
+  const url = buildAuthorizeUrl(stateValue, config);
   return res.json({ url, expiresAt });
 });
 
@@ -695,13 +713,15 @@ router.get('/strava/callback', async (req, res) => {
     return res.status(410).send('Link expired. Please restart the Strava connection from the dashboard.');
   }
 
-  const settings = getUserStravaSettings(stateRow.userId);
-  if (!hasPersonalStravaConfig(settings)) {
-    return res.status(422).send('Strava credentials missing. Update them in your Profile and try again.');
+  const { config } = resolveEffectiveStravaSettings(stateRow.userId);
+  if (!config) {
+    return res
+      .status(422)
+      .send('Strava credentials missing. Configure them in Profile or on the server and try again.');
   }
 
   try {
-    const payload = await exchangeCodeForTokens(code, settings);
+    const payload = await exchangeCodeForTokens(code, config);
     const athleteName = payload?.athlete?.firstname
       ? `${payload.athlete.firstname} ${payload.athlete.lastname || ''}`.trim()
       : payload?.athlete?.username || null;
@@ -709,9 +729,9 @@ router.get('/strava/callback', async (req, res) => {
       stateRow.userId,
       payload?.athlete?.id || null,
       athleteName,
-      settings.clientId,
-      settings.clientSecret,
-      settings.redirectUri,
+      config.clientId,
+      config.clientSecret,
+      config.redirectUri,
       payload.access_token,
       payload.refresh_token,
       payload.expires_at,

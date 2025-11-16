@@ -52,6 +52,9 @@
         <button type="button" class="nav-item" data-page="weight" aria-pressed="false">
           Weight
         </button>
+        <a href="/bluetooth.html" class="nav-item nav-link" id="bluetoothNavLink">
+          Bluetooth capture ↗
+        </a>
         <div class="settings-block">
           <button
             type="button"
@@ -624,6 +627,7 @@
                     <input type="text" id="nutritionName" placeholder="Chicken pesto pasta" autocomplete="off" aria-autocomplete="list" aria-controls="nutritionSuggestions" />
                   </label>
                   <ul class="suggestion-list hidden" id="nutritionSuggestions" role="listbox"></ul>
+                  <div class="suggestion-bar" id="nutritionSuggestionBar" aria-label="Quick suggestions"></div>
                 </div>
                 <div class="lookup-row">
                   <div class="barcode-scan flex-1">
@@ -843,8 +847,8 @@
             <p class="eyebrow">Manage Access</p>
             <h3>Head coach actions</h3>
             <p class="muted">
-              Promote promising athletes to coaches, demote coaches back to athletes, or retire accounts
-              that no longer need access.
+              Promote promising athletes to coaches, demote coaches back to athletes, reset forgotten passwords,
+              or retire accounts that no longer need access.
             </p>
           </div>
           <form class="admin-form">
@@ -858,11 +862,24 @@
               <div class="admin-actions">
                 <button type="button" class="outline-btn" id="promoteButton">Promote</button>
                 <button type="button" class="outline-btn" id="demoteButton">Demote</button>
+                <button type="button" class="outline-btn secondary" id="resetPasswordButton">
+                  Reset password
+                </button>
                 <button type="button" class="danger-btn" id="deleteButton">Delete</button>
               </div>
             </div>
+            <label class="admin-label">
+              <span>Temporary password</span>
+              <input
+                type="text"
+                id="adminPasswordInput"
+                placeholder='Leave blank to use "Password"'
+                autocomplete="off"
+              />
+            </label>
             <p class="muted hint">
-              Every action asks for confirmation and only applies to the selected member.
+              Every action asks for confirmation and only applies to the selected member. Enter a temporary password
+              (minimum 8 characters) or leave the field blank to reset to the default "Password".
             </p>
             <p class="form-feedback" id="adminFeedback"></p>
           </form>
@@ -875,6 +892,28 @@
               <h3>Profile & Security</h3>
             </div>
             <form id="profileForm" class="profile-form">
+              <div class="profile-photo-picker">
+                <div class="profile-photo-frame">
+                  <img id="profileAvatarPreview" alt="Profile photo preview" class="hidden" />
+                  <div id="profileAvatarFallback" class="profile-photo-fallback muted small-text">
+                    No photo selected
+                  </div>
+                </div>
+                <div class="profile-photo-actions">
+                  <label>
+                    Avatar URL
+                    <input type="url" id="profileAvatarUrl" placeholder="https://example.com/me.png" />
+                  </label>
+                  <label class="avatar-upload-label">
+                    Upload photo
+                    <input type="file" id="profileAvatarUpload" accept="image/*" />
+                  </label>
+                  <button type="button" class="outline-btn small" id="profileAvatarClear">
+                    Remove photo
+                  </button>
+                  <p class="form-feedback subtle" id="profileAvatarStatus"></p>
+                </div>
+              </div>
               <div class="profile-grid">
                 <label>
                   Display name

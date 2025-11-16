@@ -49,6 +49,148 @@ const state = {
   },
 };
 
+const QUICK_SUGGESTIONS = [
+  {
+    id: 'quick-water',
+    name: 'Water (500 ml)',
+    serving: '500 ml',
+    source: 'Quick add',
+    prefill: {
+      type: 'Liquid',
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fats: 0,
+      weightAmount: 500,
+      weightUnit: 'ml',
+    },
+  },
+  {
+    id: 'quick-diet-coke',
+    name: 'Diet Coke (can)',
+    serving: '355 ml',
+    source: 'Quick add',
+    prefill: {
+      type: 'Liquid',
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fats: 0,
+      weightAmount: 355,
+      weightUnit: 'ml',
+      barcode: '049000050103',
+    },
+  },
+  {
+    id: 'quick-greek-yogurt',
+    name: 'Greek Yogurt (200 g)',
+    serving: '200 g',
+    source: 'Quick add',
+    prefill: {
+      type: 'Food',
+      calories: 146,
+      protein: 15,
+      carbs: 8,
+      fats: 4,
+      weightAmount: 200,
+      weightUnit: 'g',
+    },
+  },
+  {
+    id: 'quick-chicken-breast',
+    name: 'Chicken Breast (150 g)',
+    serving: '150 g',
+    source: 'Quick add',
+    prefill: {
+      type: 'Food',
+      calories: 248,
+      protein: 46,
+      carbs: 0,
+      fats: 5,
+      weightAmount: 150,
+      weightUnit: 'g',
+    },
+  },
+  {
+    id: 'quick-oatmeal',
+    name: 'Oatmeal (1 cup cooked)',
+    serving: '240 g',
+    source: 'Quick add',
+    prefill: {
+      type: 'Food',
+      calories: 160,
+      protein: 6,
+      carbs: 27,
+      fats: 3,
+      weightAmount: 240,
+      weightUnit: 'g',
+    },
+  },
+];
+
+const SESSION_STORAGE_KEY = 'msml:lifestyle:session';
+const storage = (() => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage;
+    }
+  } catch (error) {
+    // Local storage is unavailable (private mode or disabled); fall back to in-memory only.
+  }
+  return null;
+})();
+
+function persistSession(session) {
+  if (!storage || !session?.token || !session?.user) {
+    return;
+  }
+  try {
+    storage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({
+        token: session.token,
+        user: session.user,
+        savedAt: new Date().toISOString(),
+      })
+    );
+  } catch (error) {
+    console.warn('Unable to persist session', error);
+  }
+}
+
+function readPersistedSession() {
+  if (!storage) {
+    return null;
+  }
+  try {
+    const raw = storage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed?.token || !parsed?.user) {
+      storage.removeItem(SESSION_STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch (error) {
+    console.warn('Unable to read session from storage', error);
+    storage.removeItem(SESSION_STORAGE_KEY);
+    return null;
+  }
+}
+
+function clearPersistedSession() {
+  if (!storage) {
+    return;
+  }
+  try {
+    storage.removeItem(SESSION_STORAGE_KEY);
+  } catch (error) {
+    // Ignore storage errors; UI will fall back to auth screen.
+  }
+}
+
 const loginForm = document.getElementById('loginForm');
 const signupForm = document.getElementById('signupForm');
 const loginPanel = document.getElementById('loginPanel');
@@ -111,6 +253,7 @@ const nutritionAmountLabel = document.getElementById('nutritionAmountLabel');
 const nutritionAmountReferenceText = document.getElementById('nutritionAmountReference');
 const nutritionUnitSelect = document.getElementById('nutritionUnit');
 const nutritionSuggestions = document.getElementById('nutritionSuggestions');
+const nutritionSuggestionBar = document.getElementById('nutritionSuggestionBar');
 const nutritionPreview = document.getElementById('nutritionPreview');
 const nutritionClearButton = document.getElementById('nutritionClearButton');
 const nutritionScanButton = document.getElementById('nutritionScanButton');
@@ -145,6 +288,8 @@ const adminPanel = document.getElementById('adminPanel');
 const adminUserSelect = document.getElementById('adminUserSelect');
 const promoteButton = document.getElementById('promoteButton');
 const demoteButton = document.getElementById('demoteButton');
+const adminPasswordInput = document.getElementById('adminPasswordInput');
+const resetPasswordButton = document.getElementById('resetPasswordButton');
 const deleteButton = document.getElementById('deleteButton');
 const adminFeedback = document.getElementById('adminFeedback');
 const settingsButton = document.getElementById('settingsButton');
@@ -159,12 +304,43 @@ const profileFeedback = document.getElementById('profileFeedback');
 const profileStravaClientIdInput = document.getElementById('profileStravaClientId');
 const profileStravaClientSecretInput = document.getElementById('profileStravaClientSecret');
 const profileStravaRedirectUriInput = document.getElementById('profileStravaRedirectUri');
+const profileAvatarUrlInput = document.getElementById('profileAvatarUrl');
+const profileAvatarUploadInput = document.getElementById('profileAvatarUpload');
+const profileAvatarClearButton = document.getElementById('profileAvatarClear');
+const profileAvatarPreview = document.getElementById('profileAvatarPreview');
+const profileAvatarFallback = document.getElementById('profileAvatarFallback');
+const profileAvatarStatus = document.getElementById('profileAvatarStatus');
 const activitySummaryGrid = document.getElementById('activitySummaryGrid');
 const activityWeeklyDistance = document.getElementById('activityWeeklyDistance');
 const activityWeeklyDuration = document.getElementById('activityWeeklyDuration');
 const activityAvgPace = document.getElementById('activityAvgPace');
 const activityLongestRun = document.getElementById('activityLongestRun');
 const activityLongestRunLabel = document.getElementById('activityLongestRunLabel');
+
+function resolveAvatarSrc(entity) {
+  if (!entity) return null;
+  const photo = entity.avatar_photo || entity.avatarPhoto;
+  if (photo && typeof photo === 'string') {
+    return photo.startsWith('data:image') ? photo : `data:image/jpeg;base64,${photo}`;
+  }
+  const url = entity.avatar_url || entity.avatarUrl;
+  return url || null;
+}
+
+function setProfileAvatarPreview(src) {
+  if (profileAvatarPreview) {
+    if (src) {
+      profileAvatarPreview.src = src;
+      profileAvatarPreview.classList.remove('hidden');
+    } else {
+      profileAvatarPreview.removeAttribute('src');
+      profileAvatarPreview.classList.add('hidden');
+    }
+  }
+  if (profileAvatarFallback) {
+    profileAvatarFallback.classList.toggle('hidden', Boolean(src));
+  }
+}
 
 function scrubSensitiveQueryParams() {
   const { origin, pathname, search, hash } = window.location;
@@ -1316,7 +1492,16 @@ function renderSuggestions() {
   if (!nutritionSuggestions) return;
   nutritionSuggestions.innerHTML = '';
   if (!state.suggestions.length) {
-    nutritionSuggestions.classList.add('hidden');
+    const activeQuery = nutritionNameInput?.value?.trim();
+    if (activeQuery) {
+      const li = document.createElement('li');
+      li.className = 'suggestion-empty';
+      li.textContent = 'No matches yet. Try the lookup button or pick a quick add.';
+      nutritionSuggestions.appendChild(li);
+      nutritionSuggestions.classList.remove('hidden');
+    } else {
+      nutritionSuggestions.classList.add('hidden');
+    }
     return;
   }
   nutritionSuggestions.classList.remove('hidden');
@@ -1342,6 +1527,35 @@ function renderSuggestions() {
       <span class="suggestion-meta">${metaLabel}</span>
     `;
     nutritionSuggestions.appendChild(li);
+  });
+}
+
+function showQuickSuggestions(query = '') {
+  const normalized = query.trim().toLowerCase();
+  const matches = QUICK_SUGGESTIONS.filter((item) => {
+    if (!normalized) return true;
+    return (
+      item.name.toLowerCase().includes(normalized) ||
+      item.serving?.toLowerCase().includes(normalized)
+    );
+  });
+  const fallback = matches.length ? matches : QUICK_SUGGESTIONS;
+  state.suggestions = fallback.slice(0, 8);
+  state.activeSuggestionIndex = -1;
+  renderSuggestions();
+}
+
+function renderSuggestionBar() {
+  if (!nutritionSuggestionBar) return;
+  nutritionSuggestionBar.innerHTML = '';
+  QUICK_SUGGESTIONS.forEach((item) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'suggestion-chip';
+    button.dataset.suggestionId = item.id;
+    const metaLabel = item.serving || item.source || 'Quick add';
+    button.innerHTML = `<strong>${item.name}</strong><span>${metaLabel}</span>`;
+    nutritionSuggestionBar.appendChild(button);
   });
 }
 
@@ -1987,6 +2201,11 @@ const pageCopy = {
 
 let activeAuthMode = 'login';
 let lastPresetAvatar = avatarValueInput?.value || '';
+let profileAvatarInitialUrl = '';
+let profileAvatarInitialPhoto = null;
+let profileAvatarPhotoData = null;
+let profileAvatarPhotoChanged = false;
+let profileAvatarUrlChanged = false;
 const ROLE_HEAD_COACH = 'Head Coach';
 const ROLE_COACH = 'Coach';
 const ROLE_ATHLETE = 'Athlete';
@@ -2197,14 +2416,17 @@ async function lookupNutritionFromApi() {
 }
 
 function scheduleSuggestionFetch() {
-  if (!state.token) return;
   const query = nutritionNameInput?.value.trim() || '';
   if (state.suggestionTimer) {
     clearTimeout(state.suggestionTimer);
     state.suggestionTimer = null;
   }
-  if (query.length < 1) {
-    clearSuggestions();
+  if (!query) {
+    showQuickSuggestions();
+    return;
+  }
+  if (query.length < 2 || !state.token) {
+    showQuickSuggestions(query);
     return;
   }
   state.suggestionQuery = query;
@@ -2222,11 +2444,15 @@ function scheduleSuggestionFetch() {
       if (activeQuery && latestQuery && activeQuery !== latestQuery) {
         return;
       }
-      state.suggestions = payload.suggestions || [];
+      state.suggestions = Array.isArray(payload.suggestions) ? payload.suggestions : [];
       state.activeSuggestionIndex = -1;
+      if (!state.suggestions.length) {
+        showQuickSuggestions();
+        return;
+      }
       renderSuggestions();
     } catch (error) {
-      clearSuggestions();
+      showQuickSuggestions(query);
     }
   }, 250);
 }
@@ -2333,6 +2559,87 @@ function initializeAvatarPicker() {
   });
 }
 
+function handleProfileAvatarUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    if (profileAvatarStatus) {
+      profileAvatarStatus.textContent = 'Photo must be smaller than 5 MB.';
+    }
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = reader.result;
+    if (typeof result === 'string') {
+      const base64 = result.includes(',') ? result.split(',').pop() : result;
+      profileAvatarPhotoData = base64 || null;
+      profileAvatarPhotoChanged = true;
+      profileAvatarUrlChanged = !!profileAvatarInitialUrl;
+      if (profileAvatarUrlInput) {
+        profileAvatarUrlInput.value = '';
+      }
+      setProfileAvatarPreview(result);
+      if (profileAvatarStatus) {
+        profileAvatarStatus.textContent = 'Photo ready to upload.';
+      }
+    }
+  };
+  reader.onerror = () => {
+    if (profileAvatarStatus) {
+      profileAvatarStatus.textContent = 'Could not read photo. Try another file.';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearProfileAvatarSelection({ showMessage = true } = {}) {
+  if (profileAvatarUploadInput) {
+    profileAvatarUploadInput.value = '';
+  }
+  if (profileAvatarUrlInput) {
+    profileAvatarUrlInput.value = '';
+  }
+  profileAvatarPhotoData = null;
+  profileAvatarPhotoChanged = profileAvatarInitialPhoto !== null;
+  profileAvatarUrlChanged = profileAvatarInitialUrl !== '';
+  setProfileAvatarPreview(null);
+  if (profileAvatarStatus && showMessage) {
+    profileAvatarStatus.textContent = 'Avatar will be removed when you save.';
+  }
+}
+
+function handleProfileAvatarUrlInput(event) {
+  const value = event.target.value.trim();
+  const changed = value !== profileAvatarInitialUrl;
+  profileAvatarUrlChanged = changed;
+  if (changed) {
+    if (profileAvatarInitialPhoto) {
+      profileAvatarPhotoData = null;
+      profileAvatarPhotoChanged = true;
+    }
+    if (value) {
+      setProfileAvatarPreview(value);
+      if (profileAvatarStatus) {
+        profileAvatarStatus.textContent = 'Avatar will use this URL.';
+      }
+    } else {
+      setProfileAvatarPreview(null);
+      if (profileAvatarStatus) {
+        profileAvatarStatus.textContent = 'Avatar will be cleared.';
+      }
+    }
+  } else {
+    profileAvatarPhotoChanged = false;
+    profileAvatarPhotoData = null;
+    setProfileAvatarPreview(resolveAvatarSrc(state.user));
+    if (profileAvatarStatus) {
+      profileAvatarStatus.textContent = '';
+    }
+  }
+}
+
 function updateViewingChip(subject) {
   if (!viewingChip) return;
   if (!subject || !state.user) {
@@ -2411,7 +2718,7 @@ function populateAdminUserOptions() {
     return;
   }
   state.roster
-    .filter((member) => member.id !== state.user.id && !isHeadCoachRole(member.role))
+    .filter((member) => member.id !== state.user.id)
     .forEach((member) => {
       const option = document.createElement('option');
       option.value = String(member.id);
@@ -2513,8 +2820,46 @@ async function deleteSelectedUser() {
   });
 }
 
+async function resetSelectedUserPassword() {
+  const userId = getSelectedAdminUserId();
+  if (!userId) {
+    setAdminFeedback('Select a member first.');
+    return;
+  }
+  const tempPassword = adminPasswordInput?.value?.trim() || '';
+  if (tempPassword && tempPassword.length < 8) {
+    setAdminFeedback('Temporary password must be at least 8 characters.');
+    return;
+  }
+  const confirmed =
+    typeof window === 'undefined'
+      ? true
+      : window.confirm(
+          tempPassword
+            ? `Reset this account password to "${tempPassword}"?`
+            : 'Reset this account password to "Password"?'
+        );
+  if (!confirmed) return;
+  await submitAdminAction({
+    endpoint: '/api/admin/reset-password',
+    body: { userId, password: tempPassword || undefined },
+    pending: 'Resetting password...',
+    success: tempPassword
+      ? `Password reset to "${tempPassword}".`
+      : 'Password reset to "Password".',
+  });
+  if (adminPasswordInput) {
+    adminPasswordInput.value = '';
+  }
+}
+
 function prefillProfileForm(user) {
   if (!profileForm || !user) return;
+  profileAvatarInitialUrl = user.avatar_url || '';
+  profileAvatarInitialPhoto = user.avatar_photo || null;
+  profileAvatarPhotoData = null;
+  profileAvatarPhotoChanged = false;
+  profileAvatarUrlChanged = false;
   if (profileNameInput) profileNameInput.value = user.name || '';
   if (profileWeightCategorySelect) {
     profileWeightCategorySelect.value = user.weight_category || '';
@@ -2529,6 +2874,23 @@ function prefillProfileForm(user) {
   }
   if (profileStravaRedirectUriInput) {
     profileStravaRedirectUriInput.value = user.strava_redirect_uri || '';
+  }
+  if (profileAvatarUrlInput) {
+    profileAvatarUrlInput.value = profileAvatarInitialUrl;
+  }
+  if (profileAvatarUploadInput) {
+    profileAvatarUploadInput.value = '';
+  }
+  const previewSrc = resolveAvatarSrc(user);
+  setProfileAvatarPreview(previewSrc);
+  if (profileAvatarStatus) {
+    if (user.avatar_photo) {
+      profileAvatarStatus.textContent = 'Using uploaded photo.';
+    } else if (user.avatar_url) {
+      profileAvatarStatus.textContent = 'Using linked avatar.';
+    } else {
+      profileAvatarStatus.textContent = '';
+    }
   }
 }
 
@@ -2619,8 +2981,9 @@ function renderCoachPanel() {
     const readinessLabel =
       typeof athlete.readinessScore === 'number' ? `${athlete.readinessScore}%` : '—';
     const stepsLabel = athlete.steps ? `${formatNumber(athlete.steps)} steps` : 'Awaiting sync';
-    const avatarMarkup = athlete.avatar_url
-      ? `<img class="coach-avatar" src="${athlete.avatar_url}" alt="${athlete.name}" />`
+    const avatarSrc = resolveAvatarSrc(athlete);
+    const avatarMarkup = avatarSrc
+      ? `<img class="coach-avatar" src="${avatarSrc}" alt="${athlete.name}" />`
       : '<div class="coach-avatar fallback"></div>';
     const li = document.createElement('li');
     li.dataset.athleteId = String(athlete.id);
@@ -2764,6 +3127,7 @@ function setActivePage(targetPage = 'overview') {
 }
 
 function resetToAuth(message = '') {
+  clearPersistedSession();
   state.token = null;
   state.user = null;
   state.viewing = null;
@@ -2845,6 +3209,22 @@ if (sideNav) {
   });
 }
 
+async function restoreSessionFromStorage() {
+  const stored = readPersistedSession();
+  if (!stored) {
+    return;
+  }
+  if (loginFeedback) {
+    loginFeedback.textContent = 'Restoring your session...';
+  }
+  try {
+    await completeAuthentication(stored);
+  } catch (error) {
+    clearPersistedSession();
+    resetToAuth(error?.message || 'Please sign in again.');
+  }
+}
+
 setMacroTargetExpanded(false);
 updateNutritionFormVisibility();
 setActivePage('overview');
@@ -2857,6 +3237,9 @@ if (authTabs) {
 }
 setAuthMode('login');
 initializeAvatarPicker();
+profileAvatarUploadInput?.addEventListener('change', handleProfileAvatarUpload);
+profileAvatarClearButton?.addEventListener('click', () => clearProfileAvatarSelection());
+profileAvatarUrlInput?.addEventListener('input', handleProfileAvatarUrlInput);
 athleteSwitcher?.addEventListener('change', (event) =>
   handleAthleteSelection(event.target.value)
 );
@@ -3023,6 +3406,7 @@ macroInputs.forEach((input) => {
     updateNutritionPreview();
   });
 });
+renderSuggestionBar();
 
 nutritionEntriesList?.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-action="delete-entry"]');
@@ -3049,8 +3433,15 @@ nutritionNameInput?.addEventListener('blur', () => {
 });
 
 nutritionNameInput?.addEventListener('focus', () => {
+  const query = nutritionNameInput?.value.trim() || '';
   if (state.suggestions.length) {
     renderSuggestions();
+    return;
+  }
+  if (query) {
+    scheduleSuggestionFetch();
+  } else {
+    showQuickSuggestions();
   }
 });
 
@@ -3060,6 +3451,13 @@ nutritionSuggestions?.addEventListener('click', (event) => {
   const index = Number.parseInt(li.dataset.index, 10);
   const item = state.suggestions[index];
   applySuggestion(item);
+});
+
+nutritionSuggestionBar?.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-suggestion-id]');
+  if (!button) return;
+  const suggestion = QUICK_SUGGESTIONS.find((item) => item.id === button.dataset.suggestionId);
+  applySuggestion(suggestion);
 });
 
 nutritionNameInput?.addEventListener('keydown', (event) => {
@@ -3343,6 +3741,7 @@ resetForm?.addEventListener('submit', async (event) => {
 
 promoteButton?.addEventListener('click', promoteSelectedUser);
 demoteButton?.addEventListener('click', demoteSelectedUser);
+resetPasswordButton?.addEventListener('click', resetSelectedUserPassword);
 deleteButton?.addEventListener('click', deleteSelectedUser);
 
 profileForm?.addEventListener('submit', async (event) => {
@@ -3356,11 +3755,10 @@ profileForm?.addEventListener('submit', async (event) => {
   const stravaClientId = profileStravaClientIdInput?.value.trim() || '';
   const stravaClientSecret = profileStravaClientSecretInput?.value.trim() || '';
   const stravaRedirectUri = profileStravaRedirectUriInput?.value.trim() || '';
-
-  if (!currentPassword) {
-    profileFeedback.textContent = 'Enter your current password.';
-    return;
-  }
+  const avatarUrlValue = profileAvatarUrlInput?.value?.trim() || '';
+  const avatarUrlPayload =
+    profileAvatarUrlChanged ? (avatarUrlValue ? avatarUrlValue : null) : undefined;
+  const avatarPhotoPayload = profileAvatarPhotoChanged ? profileAvatarPhotoData : undefined;
 
   profileFeedback.textContent = 'Saving changes...';
 
@@ -3380,6 +3778,8 @@ profileForm?.addEventListener('submit', async (event) => {
         stravaClientId,
         stravaClientSecret,
         stravaRedirectUri,
+        avatar: avatarUrlPayload,
+        avatarPhoto: avatarPhotoPayload,
       }),
     });
     const payload = await response.json().catch(() => null);
@@ -3389,6 +3789,8 @@ profileForm?.addEventListener('submit', async (event) => {
     state.token = payload.token;
     state.user = payload.user;
     state.viewing = payload.user;
+    state.subject = payload.user;
+    persistSession(payload);
     personalizeDashboard(payload.user);
     updateSharePanelVisibility(payload.user);
     updateAdminPanelVisibility(payload.user);
@@ -3423,6 +3825,7 @@ async function completeAuthentication(session) {
   state.coaches = [];
   state.coachesLoaded = false;
   updateNutritionFormVisibility();
+  persistSession(session);
 
   personalizeDashboard(session.user);
   updateSharePanelVisibility(session.user);
@@ -3998,8 +4401,9 @@ function personalizeDashboard(user) {
   const avatar = document.createElement('img');
   avatar.className = 'avatar';
   avatar.alt = user.name;
-  if (user.avatar_url) {
-    avatar.src = user.avatar_url;
+  const avatarSrc = resolveAvatarSrc(user);
+  if (avatarSrc) {
+    avatar.src = avatarSrc;
   } else {
     avatar.style.background = 'var(--gradient)';
   }
@@ -4789,6 +5193,7 @@ function renderStravaPanel(strava = {}) {
   const enabled = Boolean(strava.enabled);
   const configured = Boolean(strava.configured);
   const requiresSetup = Boolean(strava.requiresSetup);
+  const usingServerDefaults = Boolean(strava.usingServerDefaults);
   const isOwner = Boolean(strava.canManage);
   const canManage = Boolean(isOwner && enabled && configured && !requiresSetup);
   const athleteLabel = strava.athleteName ? ` • ${strava.athleteName}` : '';
@@ -4808,6 +5213,8 @@ function renderStravaPanel(strava = {}) {
       stravaSummary.textContent = 'Add your Strava client ID, secret, and redirect URL under Profile before linking.';
     } else if (connected && strava.lastSync) {
       stravaSummary.textContent = `Last sync ${new Date(strava.lastSync).toLocaleString()}`;
+    } else if (!connected && usingServerDefaults) {
+      stravaSummary.textContent = 'Connect Strava using the shared credentials configured by your coach.';
     } else {
       stravaSummary.textContent = 'Connect Strava to automatically import runs, rides, and hikes.';
     }
@@ -4835,3 +5242,4 @@ function renderStravaPanel(strava = {}) {
 }
 
 updateNutritionFilterButtons();
+restoreSessionFromStorage();
